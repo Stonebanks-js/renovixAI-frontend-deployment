@@ -17,8 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Heart, User, Calendar, Activity } from 'lucide-react';
+import { Heart, User, Calendar, Activity, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface HealthInfoModalProps {
   isOpen: boolean;
@@ -27,6 +29,9 @@ interface HealthInfoModalProps {
 
 const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
     fullName: '',
     gender: '',
@@ -36,18 +41,74 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
     emergencyContact: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+    };
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Store the health info in localStorage for now
-    localStorage.setItem('healthInfo', JSON.stringify(formData));
-    
-    toast({
-      title: "Health information saved!",
-      description: "Thank you for providing your health information. You can now use all features.",
-    });
-    
-    onClose();
+    if (!user) {
+      // Redirect to auth page if not logged in
+      navigate('/auth');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user.id,
+          full_name: formData.fullName,
+          gender: formData.gender,
+          marital_status: formData.maritalStatus,
+          date_of_birth: formData.dateOfBirth,
+          phone: formData.phone || null,
+          emergency_contact: formData.emergencyContact || null,
+        });
+
+      if (error) {
+        toast({
+          title: "Error saving information",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        // Also store in localStorage as backup
+        localStorage.setItem('healthInfo', JSON.stringify(formData));
+        
+        toast({
+          title: "Health information saved!",
+          description: "Thank you for providing your health information. You can now use all features.",
+        });
+        
+        onClose();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while saving your information.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoginRedirect = () => {
+    navigate('/auth');
   };
 
   const handleChange = (field: string, value: string) => {
@@ -180,10 +241,34 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
             </p>
           </div>
 
-          {/* Submit Button */}
-          <Button type="submit" variant="hero" size="lg" className="w-full">
-            Continue to NephroScan AI
-          </Button>
+          {/* Login/Submit Buttons */}
+          {!user ? (
+            <div className="space-y-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="lg" 
+                className="w-full"
+                onClick={handleLoginRedirect}
+              >
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In to Save Information
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                You need to sign in to save your health information securely
+              </p>
+            </div>
+          ) : (
+            <Button 
+              type="submit" 
+              variant="hero" 
+              size="lg" 
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save & Continue to NephroScan AI'}
+            </Button>
+          )}
         </form>
       </DialogContent>
     </Dialog>
