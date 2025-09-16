@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Brain, Activity, Shield, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import medicalHeroBg from '@/assets/medical-hero-bg.jpg';
+import kidneyHero from '@/assets/kidney-hero.jpg';
 
 const Hero = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -27,12 +27,12 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-medical-pattern">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-hero-nephro">
       {/* Background Image */}
       <div 
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-20"
         style={{
-          backgroundImage: `url(${medicalHeroBg})`,
+          backgroundImage: `url(${kidneyHero})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
@@ -41,9 +41,9 @@ const Hero = () => {
       
       {/* Animated Background Gradient */}
       <div 
-        className="absolute inset-0 bg-hero-gradient opacity-5"
+        className="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-gray-900/80"
         style={{
-          transform: `translate(${mousePosition.x * 0.01}px, ${mousePosition.y * 0.01}px)`,
+          transform: `translate(${mousePosition.x * 0.005}px, ${mousePosition.y * 0.005}px)`,
         }}
       />
 
@@ -51,10 +51,18 @@ const Hero = () => {
       {floatingIcons.map(({ Icon, delay, position }, index) => (
         <div
           key={index}
-          className="absolute opacity-20 text-primary"
+          className="absolute opacity-30 text-white sliding-icons cursor-pointer"
           style={{
             ...position,
             animationDelay: `${delay}s`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.3) translateY(-10px)';
+            e.currentTarget.style.opacity = '0.8';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.opacity = '0.3';
           }}
         >
           <Icon className="h-12 w-12 float-animation" />
@@ -64,74 +72,67 @@ const Hero = () => {
       <div className="container-medical relative z-10">
         <div className="text-center max-w-4xl mx-auto">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8 fade-in-up">
-            <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-            <span className="text-sm font-medium text-foreground">
+          <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-6 py-3 mb-8 fade-in-up shadow-xl">
+            <span className="w-3 h-3 bg-slate-900 rounded-full animate-pulse"></span>
+            <span className="text-sm font-semibold text-slate-900">
               AI-Powered Medical Diagnostics
             </span>
           </div>
 
           {/* Main Heading */}
-          <h1 className="heading-hero mb-6 fade-in-up" style={{ animationDelay: '0.1s' }}>
-            Advanced Kidney Health
+          <h1 className="heading-nephro mb-6 fade-in-up text-white" style={{ animationDelay: '0.1s' }}>
+            NephroScan AI
             <br />
-            <span className="relative">
-              Diagnostics with AI
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-secondary/30 blur-3xl -z-10 pulse-glow"></div>
+            <span className="relative text-gray-300">
+              Next-Gen Kidney Intelligence
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-gray-300/20 blur-3xl -z-10 pulse-glow"></div>
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-medical max-w-2xl mx-auto mb-8 fade-in-up" style={{ animationDelay: '0.2s' }}>
-            Revolutionizing nephrology with cutting-edge AI technology. Upload medical scans 
-            and receive instant, accurate diagnostic insights powered by advanced machine learning.
+          <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto mb-8 fade-in-up leading-relaxed" style={{ animationDelay: '0.2s' }}>
+            Revolutionary AI platform transforming kidney health diagnostics through cutting-edge machine learning and medical imaging analysis.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 fade-in-up" style={{ animationDelay: '0.3s' }}>
-            <Button variant="hero" size="xl" asChild>
-              <Link to="/ai-scan" className="group">
-                Upload Scan
+            <Button variant="nephro" size="xl" asChild>
+              <Link to="/how-it-works" className="group">
+                How It Works
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-              </Link>
-            </Button>
-            
-            <Button variant="outline" size="xl" asChild>
-              <Link to="/how-it-works">
-                Learn How It Works
               </Link>
             </Button>
           </div>
 
           {/* Trust Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto fade-in-up" style={{ animationDelay: '0.4s' }}>
-            <div className="card-hero text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Shield className="h-6 w-6 text-primary" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto fade-in-up" style={{ animationDelay: '0.4s' }}>
+            <div className="card-nephro text-center sliding-card">
+              <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <Shield className="h-8 w-8 text-white" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">HIPAA Compliant</h3>
-              <p className="text-sm text-muted-foreground">
-                Secure, privacy-first medical data handling
+              <h3 className="font-bold text-white mb-3 text-lg">HIPAA Compliant</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Enterprise-grade security with privacy-first medical data handling
               </p>
             </div>
 
-            <div className="card-hero text-center">
-              <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Brain className="h-6 w-6 text-secondary" />
+            <div className="card-nephro text-center sliding-card">
+              <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <Brain className="h-8 w-8 text-white" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">AI-Powered</h3>
-              <p className="text-sm text-muted-foreground">
-                Advanced machine learning algorithms
+              <h3 className="font-bold text-white mb-3 text-lg">AI-Powered</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Revolutionary deep learning algorithms trained on vast medical datasets
               </p>
             </div>
 
-            <div className="card-hero text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Zap className="h-6 w-6 text-primary" />
+            <div className="card-nephro text-center sliding-card">
+              <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <Zap className="h-8 w-8 text-white" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">Instant Results</h3>
-              <p className="text-sm text-muted-foreground">
-                Real-time diagnostic insights in seconds
+              <h3 className="font-bold text-white mb-3 text-lg">Instant Results</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Real-time diagnostic insights delivered in under 30 seconds
               </p>
             </div>
           </div>
@@ -140,8 +141,8 @@ const Hero = () => {
 
       {/* Scroll Indicator */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 border-2 border-primary/30 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-primary rounded-full mt-2 animate-pulse"></div>
+        <div className="w-6 h-10 border-2 border-white/40 rounded-full flex justify-center">
+          <div className="w-1 h-3 bg-white rounded-full mt-2 animate-pulse"></div>
         </div>
       </div>
     </section>

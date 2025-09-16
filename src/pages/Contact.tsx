@@ -167,7 +167,7 @@ const Contact = () => {
                     <Phone className="h-5 w-5 text-primary" />
                     <div>
                       <p className="font-medium">Phone</p>
-                      <p className="text-muted-foreground">+1 (555) 123-4567</p>
+                      <p className="text-muted-foreground">+91 9721324544, +91 7054124544</p>
                     </div>
                   </div>
 
@@ -175,7 +175,7 @@ const Contact = () => {
                     <MapPin className="h-5 w-5 text-primary" />
                     <div>
                       <p className="font-medium">Location</p>
-                      <p className="text-muted-foreground">Boston, MA, USA</p>
+                      <p className="text-muted-foreground">Kanpur, Uttar Pradesh, India</p>
                     </div>
                   </div>
 
@@ -183,7 +183,7 @@ const Contact = () => {
                     <Clock className="h-5 w-5 text-primary" />
                     <div>
                       <p className="font-medium">Business Hours</p>
-                      <p className="text-muted-foreground">Mon-Fri: 9:00 AM - 6:00 PM EST</p>
+                      <p className="text-muted-foreground">24/7 services available</p>
                     </div>
                   </div>
                 </div>

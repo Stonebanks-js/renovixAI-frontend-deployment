@@ -8,34 +8,34 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Medical & Healthcare Color Palette */
+    /* Modern Black/White/Gray Color Palette */
     --background: 0 0% 100%;
-    --foreground: 213 27% 12%;
+    --foreground: 210 11% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 213 27% 12%;
+    --card-foreground: 210 11% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 213 27% 12%;
+    --popover-foreground: 210 11% 15%;
 
-    /* Medical Blue Primary */
-    --primary: 217 91% 60%;
+    /* Sophisticated Black Primary */
+    --primary: 210 11% 15%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 217 91% 55%;
-    --primary-glow: 217 91% 70%;
+    --primary-hover: 210 11% 10%;
+    --primary-glow: 210 11% 25%;
 
-    /* Healing Teal Secondary */
-    --secondary: 186 83% 40%;
+    /* Elegant Gray Secondary */
+    --secondary: 210 6% 46%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-hover: 186 83% 35%;
-    --secondary-glow: 186 83% 50%;
+    --secondary-hover: 210 6% 40%;
+    --secondary-glow: 210 6% 55%;
 
-    /* Professional Grays */
-    --muted: 213 15% 97%;
-    --muted-foreground: 213 15% 45%;
+    /* Refined Grays */
+    --muted: 210 6% 97%;
+    --muted-foreground: 210 6% 46%;
 
-    --accent: 213 15% 95%;
-    --accent-foreground: 213 27% 12%;
+    --accent: 210 6% 95%;
+    --accent-foreground: 210 11% 15%;
 
     /* Status Colors */
     --success: 145 63% 49%;
@@ -48,21 +48,22 @@ All colors MUST be HSL.
     --destructive-foreground: 0 0% 100%;
 
     /* UI Elements */
-    --border: 213 15% 92%;
-    --input: 213 15% 95%;
-    --ring: 217 91% 60%;
+    --border: 210 6% 90%;
+    --input: 210 6% 95%;
+    --ring: 210 11% 15%;
 
-    /* Medical Gradients */
+    /* Sophisticated Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-glow)));
     --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+    --gradient-nephro: linear-gradient(135deg, hsl(210 11% 8%) 0%, hsl(210 6% 20%) 100%);
 
-    /* Medical Shadows */
-    --shadow-soft: 0 4px 16px -4px hsl(var(--primary) / 0.1);
-    --shadow-medium: 0 8px 24px -8px hsl(var(--primary) / 0.15);
-    --shadow-strong: 0 16px 40px -12px hsl(var(--primary) / 0.2);
-    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.3);
+    /* Elegant Shadows */
+    --shadow-soft: 0 4px 16px -4px hsl(210 11% 15% / 0.1);
+    --shadow-medium: 0 8px 24px -8px hsl(210 11% 15% / 0.15);
+    --shadow-strong: 0 16px 40px -12px hsl(210 11% 15% / 0.25);
+    --shadow-glow: 0 0 60px hsl(0 0% 100% / 0.2);
 
     /* Animation Variables */
     --animation-fast: 0.2s ease-out;
@@ -139,17 +140,18 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* Medical Button Variants */
+  /* NephroScan Button Variants */
   .btn-medical {
     @apply relative overflow-hidden rounded-lg px-6 py-3 font-medium transition-all duration-300;
     @apply shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)];
     @apply transform hover:scale-[1.02] active:scale-[0.98];
   }
 
-  .btn-hero {
-    @apply btn-medical text-white;
-    background: var(--gradient-hero);
-    @apply hover:shadow-[var(--shadow-glow)];
+  .btn-nephro {
+    @apply btn-medical text-black bg-white font-bold;
+    @apply hover:bg-gray-100 hover:scale-105;
+    @apply border-2 border-transparent hover:border-gray-200;
+    @apply hover:shadow-2xl;
   }
 
   .btn-primary {
@@ -168,15 +170,27 @@ All colors MUST be HSL.
     @apply shadow-none hover:shadow-[var(--shadow-soft)];
   }
 
-  /* Medical Card Variants */
+  /* NephroScan Card Variants */
   .card-medical {
     @apply rounded-xl border bg-card p-6 shadow-[var(--shadow-soft)];
     @apply transition-all duration-300 hover:shadow-[var(--shadow-medium)];
     @apply hover:translate-y-[-2px];
   }
 
-  .card-hero {
-    @apply card-medical bg-white/80 backdrop-blur-sm border-white/20;
+  .card-nephro {
+    @apply card-medical bg-white/10 backdrop-blur-md border-white/20;
+    @apply hover:bg-white/20 hover:scale-105;
+    @apply transition-all duration-500 ease-out;
+  }
+
+  /* Sliding animations */
+  .sliding-card {
+    animation: slideInRight 2s ease-out infinite;
+  }
+
+  .sliding-icons {
+    animation: slideLeftRight 8s ease-in-out infinite;
+    transition: all 0.3s ease;
   }
 
   /* Animated Elements */
@@ -203,13 +217,10 @@ All colors MUST be HSL.
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  /* Medical Typography */
-  .heading-hero {
-    @apply text-4xl md:text-5xl lg:text-6xl font-bold leading-tight;
-    background: var(--gradient-hero);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+  /* NephroScan Typography */
+  .heading-nephro {
+    @apply text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   }
 
   .heading-section {
@@ -251,10 +262,8 @@ All colors MUST be HSL.
   }
 
   /* Background Patterns */
-  .bg-medical-pattern {
-    background-image: 
-      radial-gradient(circle at 25% 25%, hsl(var(--primary) / 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, hsl(var(--secondary) / 0.05) 0%, transparent 50%);
+  .bg-hero-nephro {
+    background: var(--gradient-nephro);
   }
 
   .bg-hero-gradient {
@@ -263,5 +272,19 @@ All colors MUST be HSL.
 
   .bg-subtle-gradient {
     background: var(--gradient-subtle);
+  }
+
+  /* New Sliding Animations */
+  @keyframes slideInRight {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(10px); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes slideLeftRight {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(15px); }
+    50% { transform: translateX(-10px); }
+    75% { transform: translateX(5px); }
   }
 }

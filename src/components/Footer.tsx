@@ -31,9 +31,9 @@ const Footer = () => {
   };
 
   const contactInfo = [
-    { icon: Mail, text: 'contact@nephroscan.ai', href: 'mailto:contact@nephroscan.ai' },
-    { icon: Phone, text: '+1 (555) 123-4567', href: 'tel:+15551234567' },
-    { icon: MapPin, text: 'Boston, MA, USA', href: '#' },
+    { icon: Mail, text: 'stonebanks.ie@gmail.com', href: 'mailto:stonebanks.ie@gmail.com' },
+    { icon: Phone, text: '+91 9721324544', href: 'tel:+919721324544' },
+    { icon: MapPin, text: 'Kanpur, UP, India', href: '#' },
   ];
 
   const socialLinks = [
