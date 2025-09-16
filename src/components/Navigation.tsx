@@ -11,6 +11,7 @@ const Navigation = () => {
     { name: 'About', href: '/about', current: false },
     { name: 'How It Works', href: '/how-it-works', current: false },
     { name: 'AI Scan', href: '/ai-scan', current: false },
+    { name: 'Developer', href: '/developer', current: false },
     { name: 'Contact', href: '/contact', current: false },
   ];
 

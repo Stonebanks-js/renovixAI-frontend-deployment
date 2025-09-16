@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileImage, Brain, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileImage, Brain, CheckCircle, AlertCircle, Loader2, Sparkles, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AIScan = () => {
@@ -87,11 +87,21 @@ const AIScan = () => {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="pt-24 pb-16 bg-medical-pattern">
-        <div className="container-medical">
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="heading-hero mb-6">AI-Powered Kidney Scan Analysis</h1>
-            <p className="text-medical">
+      <section className="pt-24 pb-16 bg-gradient-to-br from-background via-muted/20 to-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
+        <div className="container-medical relative">
+          <div className="text-center max-w-3xl mx-auto animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 mb-6 border border-white/20">
+              <Brain className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">AI-Powered Diagnostics</span>
+            </div>
+            <h1 className="heading-nephro mb-6">
+              AI-Powered 
+              <span className="bg-gradient-to-r from-primary via-foreground to-primary bg-clip-text text-transparent">
+                {" "}Kidney Scan Analysis
+              </span>
+            </h1>
+            <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               Upload your kidney scan images and receive instant AI-powered diagnostic insights. 
               Our advanced algorithms analyze medical imaging with 97.5% accuracy.
             </p>
@@ -99,19 +109,22 @@ const AIScan = () => {
         </div>
       </section>
 
-      <section className="section-padding">
+      <section className="section-padding bg-gradient-to-b from-background to-muted/30">
         <div className="container-medical">
           <div className="max-w-4xl mx-auto">
             
             {/* Upload Section */}
-            <Card className="p-8 mb-8">
-              <h2 className="text-2xl font-semibold text-foreground mb-6">Upload Medical Scan</h2>
+            <Card className="card-nephro p-8 mb-8 hover-scale animate-fade-in-up">
+              <div className="flex items-center gap-3 mb-6">
+                <Sparkles className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-semibold text-foreground">Upload Medical Scan</h2>
+              </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Upload Area */}
                 <div>
                   <div 
-                    className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors duration-300"
+                    className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover-scale"
                     onClick={handleUploadClick}
                   >
                     <input
@@ -150,9 +163,9 @@ const AIScan = () => {
 
                   {selectedFile && !isAnalyzing && !analysisResult && (
                     <Button 
-                      variant="hero" 
+                      variant="nephro" 
                       size="lg" 
-                      className="w-full mt-4"
+                      className="w-full mt-4 hover-scale"
                       onClick={handleAnalyze}
                     >
                       <Brain className="h-5 w-5 mr-2" />
@@ -185,11 +198,11 @@ const AIScan = () => {
                     </ul>
                   </div>
 
-                  <div className="bg-secondary/10 rounded-lg p-4">
+                  <div className="bg-primary/10 backdrop-blur-sm rounded-lg p-4 border border-primary/20">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-secondary mt-0.5 flex-shrink-0" />
+                      <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                       <div>
-                        <h4 className="font-medium text-foreground mb-1">Privacy Notice</h4>
+                        <h4 className="font-medium text-foreground mb-1">Privacy & Security</h4>
                         <p className="text-sm text-muted-foreground">
                           All uploaded images are processed securely and automatically deleted 
                           after analysis. We maintain HIPAA compliance standards.

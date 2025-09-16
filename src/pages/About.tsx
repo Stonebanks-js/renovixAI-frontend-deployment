@@ -1,7 +1,7 @@
 import React from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Users, Target, Award, Heart, CheckCircle } from 'lucide-react';
+import { Users, Target, Award, Heart, CheckCircle, ArrowRight } from 'lucide-react';
 
 const About = () => {
   const team = [
@@ -82,14 +82,22 @@ const About = () => {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="pt-24 pb-16 bg-medical-pattern">
-        <div className="container-medical">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="heading-hero mb-6">
+      <section className="pt-24 pb-16 bg-gradient-to-br from-background via-muted/20 to-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
+        <div className="container-medical relative">
+          <div className="text-center max-w-4xl mx-auto animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 mb-6 border border-white/20">
+              <Heart className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">Medical Innovation Leaders</span>
+            </div>
+            <h1 className="heading-nephro mb-6">
               Pioneering the Future of
-              <br />Medical AI Diagnostics
+              <br />
+              <span className="bg-gradient-to-r from-primary via-foreground to-primary bg-clip-text text-transparent">
+                Medical AI Diagnostics
+              </span>
             </h1>
-            <p className="text-medical max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               We're a team of passionate medical professionals, AI researchers, and healthcare 
               innovators dedicated to revolutionizing kidney disease detection through 
               cutting-edge artificial intelligence.
@@ -99,24 +107,27 @@ const About = () => {
       </section>
 
       {/* Mission & Vision */}
-      <section className="section-padding">
+      <section className="section-padding bg-gradient-to-b from-background to-muted/30">
         <div className="container-medical">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
-            <div>
+            <div className="animate-fade-in-up">
               <h2 className="heading-section">Our Mission</h2>
-              <p className="text-medical mb-6">
+              <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
                 To democratize access to advanced kidney disease diagnostics through AI, 
                 empowering healthcare professionals worldwide with instant, accurate, 
                 and reliable diagnostic tools that save lives and improve patient outcomes.
               </p>
-              <p className="text-medical">
+              <p className="text-muted-foreground leading-relaxed">
                 We believe that every patient deserves access to the best diagnostic 
                 technology, regardless of their location or economic circumstances.
               </p>
             </div>
-            <div className="card-medical bg-primary/5">
-              <h3 className="text-xl font-semibold text-foreground mb-4">Our Vision</h3>
-              <p className="text-muted-foreground">
+            <div className="card-nephro hover-scale animate-fade-in-up">
+              <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
+                Our Vision
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
                 A world where kidney disease is detected early, accurately, and consistently 
                 across all healthcare settings, leading to better treatment outcomes and 
                 improved quality of life for millions of patients globally.
@@ -126,17 +137,21 @@ const About = () => {
 
           {/* Values */}
           <div className="mb-16">
-            <h2 className="heading-section text-center mb-12">Our Core Values</h2>
+            <h2 className="heading-section text-center mb-12 animate-fade-in-up">Our Core Values</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {values.map((value, index) => {
                 const Icon = value.icon;
                 return (
-                  <div key={index} className="card-medical text-center">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                      <Icon className="h-6 w-6 text-primary" />
+                  <div 
+                    key={index} 
+                    className="card-nephro text-center hover-scale animate-fade-in-up group cursor-pointer"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-all duration-300">
+                      <Icon className="h-6 w-6 text-primary group-hover:scale-110 transition-transform duration-300" />
                     </div>
                     <h3 className="font-semibold text-foreground mb-3">{value.title}</h3>
-                    <p className="text-sm text-muted-foreground">{value.description}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{value.description}</p>
                   </div>
                 );
               })}
@@ -146,20 +161,27 @@ const About = () => {
       </section>
 
       {/* Timeline */}
-      <section className="section-padding bg-muted/30">
+      <section className="section-padding bg-gradient-to-b from-muted/30 to-background">
         <div className="container-medical">
-          <h2 className="heading-section text-center mb-12">Our Journey</h2>
+          <h2 className="heading-section text-center mb-12 animate-fade-in-up">Our Journey</h2>
           <div className="max-w-4xl mx-auto">
             {timeline.map((item, index) => (
-              <div key={index} className="flex items-start gap-6 mb-8 last:mb-0">
+              <div 
+                key={index} 
+                className="flex items-start gap-6 mb-8 last:mb-0 animate-fade-in-up hover-scale group"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
                 <div className="flex-shrink-0">
-                  <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center font-bold text-white">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center font-bold text-white text-sm group-hover:scale-110 transition-transform duration-300">
                     {item.year}
                   </div>
                 </div>
                 <div className="flex-1 pt-2">
-                  <h3 className="text-xl font-semibold text-foreground mb-2">{item.title}</h3>
-                  <p className="text-muted-foreground">{item.description}</p>
+                  <h3 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+                    {item.title}
+                    <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">{item.description}</p>
                 </div>
               </div>
             ))}
@@ -168,18 +190,22 @@ const About = () => {
       </section>
 
       {/* Team */}
-      <section className="section-padding">
+      <section className="section-padding bg-gradient-to-b from-background to-muted/20">
         <div className="container-medical">
-          <h2 className="heading-section text-center mb-12">Meet Our Team</h2>
+          <h2 className="heading-section text-center mb-12 animate-fade-in-up">Meet Our Team</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {team.map((member, index) => (
-              <div key={index} className="card-medical text-center">
-                <div className="w-24 h-24 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <Users className="h-12 w-12 text-primary" />
+              <div 
+                key={index} 
+                className="card-nephro text-center hover-scale animate-fade-in-up group cursor-pointer"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="w-24 h-24 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center group-hover:bg-primary/20 transition-all duration-300">
+                  <Users className="h-12 w-12 text-primary group-hover:scale-110 transition-transform duration-300" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-1">{member.name}</h3>
                 <p className="text-primary font-medium mb-3">{member.role}</p>
-                <p className="text-sm text-muted-foreground">{member.description}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{member.description}</p>
               </div>
             ))}
           </div>
