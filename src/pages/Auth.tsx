@@ -115,29 +115,35 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
+          redirectTo: `${window.location.origin}/auth/callback`,
+          skipBrowserRedirect: true,
+        },
       });
 
       if (error) {
         console.error('Google sign in error:', error);
         toast({
-          title: "Google sign in failed",
+          title: 'Google sign in failed',
           description: error.message,
-          variant: "destructive",
+          variant: 'destructive',
         });
+      } else if (data?.url) {
+        const popup = window.open(data.url, '_blank', 'noopener,noreferrer');
+        if (!popup) {
+          // Fallback if popup blocked
+          window.location.href = data.url;
+        }
       }
     } catch (error) {
       console.error('Unexpected error:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);

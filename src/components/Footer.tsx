@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Mail, Phone, MapPin, Linkedin, Twitter, Github } from 'lucide-react';
+import { Activity, Mail, Phone, MapPin, Clock, Linkedin, Twitter, Github } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -32,8 +32,9 @@ const Footer = () => {
 
   const contactInfo = [
     { icon: Mail, text: 'stonebanks.ie@gmail.com', href: 'mailto:stonebanks.ie@gmail.com' },
-    { icon: Phone, text: '+91 9721324544', href: 'tel:+919721324544' },
+    { icon: Phone, text: '+91 9721324544, +91 7054124544', href: 'tel:+919721324544' },
     { icon: MapPin, text: 'Kanpur, UP, India', href: '#' },
+    { icon: Clock, text: '24/7 services available', href: '#' },
   ];
 
   const socialLinks = [
