@@ -11,6 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-[hsl(var(--primary-hover))] shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)] transform hover:scale-[1.02] active:scale-[0.98]",
         hero: "text-white shadow-[var(--shadow-glow)] hover:shadow-[var(--shadow-glow)] transform hover:scale-[1.02] active:scale-[0.98] bg-[var(--gradient-hero)] relative overflow-hidden",
+        nephro: "text-black bg-white font-bold hover:bg-gray-100 hover:scale-105 border-2 border-transparent hover:border-gray-200 hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]",
         medical: "bg-secondary text-secondary-foreground hover:bg-[hsl(var(--secondary-hover))] shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)] transform hover:scale-[1.02] active:scale-[0.98]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)]",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)]",
