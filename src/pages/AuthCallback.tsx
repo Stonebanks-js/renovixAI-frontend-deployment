@@ -10,6 +10,7 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Handle the auth callback
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -23,17 +24,30 @@ const AuthCallback = () => {
           return;
         }
 
-        if (data?.session) {
+        if (data?.session?.user) {
+          // Check if profile exists, if not it will be created by the trigger
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', data.session.user.id)
+            .maybeSingle();
+
           toast({
             title: "Welcome!",
-            description: "You have successfully signed in with Google.",
+            description: `You have successfully signed in${data.session.user.user_metadata?.full_name ? `, ${data.session.user.user_metadata.full_name}` : ''}!`,
           });
+          
           navigate('/');
         } else {
           navigate('/auth');
         }
       } catch (error) {
         console.error('Unexpected error:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred during authentication.",
+          variant: "destructive",
+        });
         navigate('/auth');
       }
     };
