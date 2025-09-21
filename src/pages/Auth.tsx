@@ -116,12 +116,11 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          skipBrowserRedirect: true,
-        },
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
       });
 
       if (error) {
@@ -131,12 +130,6 @@ const Auth = () => {
           description: error.message,
           variant: 'destructive',
         });
-      } else if (data?.url) {
-        const popup = window.open(data.url, '_blank', 'noopener,noreferrer');
-        if (!popup) {
-          // Fallback if popup blocked
-          window.location.href = data.url;
-        }
       }
     } catch (error) {
       console.error('Unexpected error:', error);

@@ -9,6 +9,7 @@ import Contact from "./pages/Contact";
 import AIScan from "./pages/AIScan";
 import HowItWorks from "./pages/HowItWorks";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import Developer from "./pages/Developer";
 import NotFound from "./pages/NotFound";
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/contact" element={<Contact />} />
           <Route path="/developer" element={<Developer />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
