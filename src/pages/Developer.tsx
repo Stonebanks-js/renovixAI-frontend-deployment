@@ -22,17 +22,20 @@ const Developer = () => {
     {
       title: "NephroScan AI",
       description: "Advanced AI-powered kidney health analysis system using computer vision and machine learning",
-      tech: ["Python", "TensorFlow", "OpenCV", "React"]
+      tech: ["Python", "TensorFlow", "OpenCV", "React"],
+      githubUrl: "https://github.com/Stonebanks-js"
     },
     {
       title: "MLOps Pipeline",
       description: "Automated machine learning pipeline for model deployment and monitoring",
-      tech: ["Docker", "Kubernetes", "MLflow", "Python"]
+      tech: ["Docker", "Kubernetes", "MLflow", "Python"],
+      githubUrl: "https://github.com/Stonebanks-js"
     },
     {
       title: "Agentic AI Research",
       description: "Research on autonomous AI agents for healthcare applications",
-      tech: ["LangChain", "OpenAI", "RAG", "Vector DB"]
+      tech: ["LangChain", "OpenAI", "RAG", "Vector DB"],
+      githubUrl: "https://github.com/Stonebanks-js"
     }
   ];
 
@@ -49,8 +52,7 @@ const Developer = () => {
   };
 
   const handleResumeClick = () => {
-    // You can add a resume PDF link here
-    window.open('#', '_blank', 'noopener,noreferrer');
+    window.open('https://drive.google.com/file/d/1WuUYos9Us5MWWnWdP8RqDKJiH9JIakYH/view?usp=sharing', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -61,9 +63,9 @@ const Developer = () => {
       <section 
         className="relative min-h-screen flex items-center justify-center overflow-hidden"
         style={{
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.8)), url(${developerBg})`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${developerBg})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
           backgroundAttachment: 'fixed'
         }}
       >
@@ -105,7 +107,7 @@ const Developer = () => {
                   variant="outline" 
                   size="lg" 
                   onClick={handleGitHubClick}
-                  className="hover-scale group border-white/20 text-white hover:bg-white hover:text-black"
+                  className="hover-scale group bg-white/5 backdrop-blur-sm border-white/30 text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:border-white/50 transition-all duration-300"
                 >
                   <Github className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
                   GitHub
@@ -115,7 +117,7 @@ const Developer = () => {
                   variant="outline" 
                   size="lg" 
                   onClick={handleEmailClick}
-                  className="hover-scale group border-white/20 text-white hover:bg-white hover:text-black"
+                  className="hover-scale group bg-white/5 backdrop-blur-sm border-white/30 text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:border-white/50 transition-all duration-300"
                 >
                   <Mail className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
                   Email Me
@@ -125,7 +127,7 @@ const Developer = () => {
                   variant="outline" 
                   size="lg" 
                   onClick={handleResumeClick}
-                  className="hover-scale group border-white/20 text-white hover:bg-white hover:text-black"
+                  className="hover-scale group bg-white/5 backdrop-blur-sm border-white/30 text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:border-white/50 transition-all duration-300"
                 >
                   <FileText className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
                   Resume
@@ -197,8 +199,9 @@ const Developer = () => {
             {projects.map((project, index) => (
               <Card 
                 key={index}
-                className="card-medical p-6 hover-scale animate-fade-in-up group cursor-pointer"
+                className="card-medical p-6 animate-fade-in-up group cursor-pointer hover:scale-110 hover:animate-pulse transition-all duration-300 hover:shadow-2xl hover:shadow-primary/20"
                 style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={() => window.open(project.githubUrl, '_blank', 'noopener,noreferrer')}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <Code className="w-5 h-5 text-primary group-hover:rotate-12 transition-transform" />
