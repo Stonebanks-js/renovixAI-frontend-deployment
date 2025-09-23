@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      health_reports: {
+        Row: {
+          created_at: string
+          id: string
+          pdf_path: string | null
+          report_data: Json
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pdf_path?: string | null
+          report_data?: Json
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pdf_path?: string | null
+          report_data?: Json
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -52,6 +84,117 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      scan_images: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string
+          session_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type: string
+          session_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          session_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_images_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_results: {
+        Row: {
+          confidence: number
+          created_at: string
+          diagnosis: string
+          findings: Json
+          id: string
+          recommendations: string | null
+          session_id: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          diagnosis: string
+          findings?: Json
+          id?: string
+          recommendations?: string | null
+          session_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          diagnosis?: string
+          findings?: Json
+          id?: string
+          recommendations?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_results_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          progress: number | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          progress?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          progress?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
     }
     Views: {

@@ -8,15 +8,21 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Upload, FileImage, Brain, CheckCircle, AlertCircle, Loader2, Sparkles, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useScanAnalysis } from '@/hooks/useScanAnalysis';
 
 const AIScan = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  
+  const {
+    isAnalyzing,
+    analysisProgress,
+    analysisResults,
+    uploadImageAndAnalyze,
+    resetAnalysis
+  } = useScanAnalysis();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -25,7 +31,7 @@ const AIScan = () => {
         setSelectedFile(file);
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
-        setAnalysisResult(null);
+        resetAnalysis();
       } else {
         toast({
           title: "Invalid file type",
@@ -38,44 +44,18 @@ const AIScan = () => {
 
   const handleAnalyze = async () => {
     if (!selectedFile) return;
+    
+    try {
+      await uploadImageAndAnalyze(selectedFile);
+    } catch (error) {
+      console.error('Analysis failed:', error);
+    }
+  };
 
-    setIsAnalyzing(true);
-    setAnalysisProgress(0);
-
-    // Simulate AI analysis with progress
-    const progressInterval = setInterval(() => {
-      setAnalysisProgress(prev => {
-        if (prev >= 95) {
-          clearInterval(progressInterval);
-          return 95;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 200);
-
-    // Simulate API call
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setAnalysisProgress(100);
-      setIsAnalyzing(false);
-      
-      // Mock analysis result
-      setAnalysisResult({
-        diagnosis: 'Normal Kidney Function',
-        confidence: 94.7,
-        details: [
-          { finding: 'Kidney Shape', status: 'Normal', confidence: 96.2 },
-          { finding: 'Cortical Thickness', status: 'Normal', confidence: 93.8 },
-          { finding: 'Medullary Pattern', status: 'Normal', confidence: 94.1 },
-          { finding: 'Vascular Pattern', status: 'Normal', confidence: 92.5 }
-        ],
-        recommendations: [
-          'Continue regular monitoring',
-          'Maintain healthy hydration',
-          'Follow up in 12 months'
-        ]
-      });
-    }, 3000);
+  const handleReset = () => {
+    setSelectedFile(null);
+    setPreviewUrl('');
+    resetAnalysis();
   };
 
   const handleUploadClick = () => {
@@ -161,7 +141,7 @@ const AIScan = () => {
                     )}
                   </div>
 
-                  {selectedFile && !isAnalyzing && !analysisResult && (
+                  {selectedFile && !isAnalyzing && !analysisResults && (
                     <Button 
                       variant="nephro" 
                       size="lg" 
@@ -239,7 +219,7 @@ const AIScan = () => {
             )}
 
             {/* Analysis Results */}
-            {analysisResult && (
+            {analysisResults && (
               <Card className="p-8">
                 <h3 className="text-2xl font-semibold text-foreground mb-6">Analysis Results</h3>
                 
@@ -251,10 +231,10 @@ const AIScan = () => {
                         <CheckCircle className="h-8 w-8 text-primary" />
                         <div>
                           <h4 className="text-xl font-semibold text-foreground">
-                            {analysisResult.diagnosis}
+                            {analysisResults.diagnosis}
                           </h4>
                           <p className="text-sm text-muted-foreground">
-                            Confidence: {analysisResult.confidence}%
+                            Confidence: {(analysisResults.confidence * 100).toFixed(1)}%
                           </p>
                         </div>
                       </div>
@@ -263,12 +243,13 @@ const AIScan = () => {
                     {/* Detailed Findings */}
                     <div className="space-y-3">
                       <h5 className="font-semibold text-foreground">Detailed Findings</h5>
-                      {analysisResult.details.map((detail: any, index: number) => (
+                      {Object.entries(analysisResults.findings).map(([key, value], index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <span className="font-medium text-foreground">{detail.finding}</span>
+                          <span className="font-medium text-foreground capitalize">
+                            {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                          </span>
                           <div className="text-right">
-                            <span className="text-sm text-primary font-medium">{detail.status}</span>
-                            <p className="text-xs text-muted-foreground">{detail.confidence}%</p>
+                            <span className="text-sm text-primary font-medium">{value as string}</span>
                           </div>
                         </div>
                       ))}
@@ -277,9 +258,9 @@ const AIScan = () => {
 
                   {/* Recommendations */}
                   <div>
-                    <h5 className="font-semibold text-foreground mb-4">Recommendations</h5>
+                    <h5 className="font-semibold text-foreground mb-4">Health Recommendations</h5>
                     <div className="space-y-3">
-                      {analysisResult.recommendations.map((rec: string, index: number) => (
+                      {analysisResults.recommendations.split('\n').map((rec: string, index: number) => (
                         <div key={index} className="flex items-start gap-3">
                           <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                           <span className="text-muted-foreground">{rec}</span>
@@ -300,7 +281,7 @@ const AIScan = () => {
                       <Button variant="hero" size="lg" className="w-full">
                         Download Report
                       </Button>
-                      <Button variant="outline" size="lg" className="w-full">
+                      <Button variant="outline" size="lg" className="w-full" onClick={handleReset}>
                         Analyze Another Scan
                       </Button>
                     </div>
