@@ -27,15 +27,20 @@ const AIScan = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         setSelectedFile(file);
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
+        
+        if (file.type === 'application/pdf') {
+          setPreviewUrl(''); // No preview for PDF
+        } else {
+          const url = URL.createObjectURL(file);
+          setPreviewUrl(url);
+        }
         resetAnalysis();
       } else {
         toast({
           title: "Invalid file type",
-          description: "Please select an image file (JPG, PNG, DICOM)",
+          description: "Please select an image file (JPG, PNG, DICOM) or PDF pathology report",
           variant: "destructive"
         });
       }
@@ -110,31 +115,43 @@ const AIScan = () => {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*,.dcm"
+                      accept="image/*,.dcm,.pdf"
                       onChange={handleFileSelect}
                       className="hidden"
                     />
                     
-                    {previewUrl ? (
+                    {selectedFile ? (
                       <div className="space-y-4">
-                        <img 
-                          src={previewUrl} 
-                          alt="Scan preview" 
-                          className="max-w-full h-48 object-contain mx-auto rounded-lg"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          File: {selectedFile?.name}
-                        </p>
+                        {selectedFile.type === 'application/pdf' ? (
+                          <div className="flex flex-col items-center space-y-3">
+                            <FileImage className="h-16 w-16 text-primary" />
+                            <div className="text-center">
+                              <p className="font-medium text-foreground">PDF Pathology Report</p>
+                              <p className="text-sm text-muted-foreground">{selectedFile.name}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <img 
+                              src={previewUrl} 
+                              alt="Scan preview" 
+                              className="max-w-full h-48 object-contain mx-auto rounded-lg"
+                            />
+                            <p className="text-sm text-muted-foreground">
+                              File: {selectedFile?.name}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-4">
                         <FileImage className="h-16 w-16 text-primary/50 mx-auto" />
                         <div>
                           <p className="text-lg font-medium text-foreground mb-2">
-                            Drop your scan here or click to upload
+                            Drop your scan or pathology report here
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Supports JPG, PNG, DICOM files up to 10MB
+                            Supports JPG, PNG, DICOM images or PDF pathology reports up to 10MB
                           </p>
                         </div>
                       </div>
@@ -165,7 +182,11 @@ const AIScan = () => {
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        DICOM format preferred for maximum accuracy
+                        PDF pathology reports from laboratories
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                        DICOM format preferred for medical images
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
@@ -260,12 +281,12 @@ const AIScan = () => {
                   <div>
                     <h5 className="font-semibold text-foreground mb-4">Health Recommendations</h5>
                     <div className="space-y-3">
-                      {analysisResults.recommendations.split('\n').map((rec: string, index: number) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                          <span className="text-muted-foreground">{rec}</span>
-                        </div>
-                      ))}
+                    {analysisResults.recommendations.split('\n').filter(rec => rec.trim()).map((rec: string, index: number) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span className="text-muted-foreground">{rec.replace(/^[•\-]\s*/, '')}</span>
+                      </div>
+                    ))}
                     </div>
 
                     <div className="mt-8 p-4 bg-secondary/10 rounded-lg">
