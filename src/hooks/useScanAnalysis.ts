@@ -48,7 +48,8 @@ export const useScanAnalysis = () => {
         .single();
 
       if (sessionError) {
-        throw new Error('Failed to create scan session');
+        console.error('Session creation error:', sessionError);
+        throw new Error(`Failed to create scan session: ${sessionError.message}`);
       }
 
       setCurrentSession(session as ScanSession);
@@ -124,9 +125,24 @@ export const useScanAnalysis = () => {
     } catch (error) {
       console.error('Error during scan analysis:', error);
       setIsAnalyzing(false);
+      
+      // More specific error messages
+      let errorMessage = "An error occurred during upload.";
+      if (error instanceof Error) {
+        if (error.message.includes('scan session')) {
+          errorMessage = "Failed to create scan session. Please try logging out and back in.";
+        } else if (error.message.includes('upload')) {
+          errorMessage = "Failed to upload image. Please check your file and try again.";
+        } else if (error.message.includes('not authenticated')) {
+          errorMessage = "Please log in to use the scan analysis feature.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Upload Failed",
-        description: error instanceof Error ? error.message : "An error occurred during upload.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
