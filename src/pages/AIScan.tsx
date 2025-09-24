@@ -241,74 +241,100 @@ const AIScan = () => {
 
             {/* Analysis Results */}
             {analysisResults && (
-              <Card className="p-8">
-                <h3 className="text-2xl font-semibold text-foreground mb-6">Analysis Results</h3>
+              <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-xl p-8 border border-blue-100">
+                <div className="flex items-center mb-6">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Medical Analysis Report
+                  </h2>
+                </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Main Result */}
-                  <div>
-                    <div className="bg-primary/5 rounded-lg p-6 mb-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <CheckCircle className="h-8 w-8 text-primary" />
-                        <div>
-                          <h4 className="text-xl font-semibold text-foreground">
-                            {analysisResults.diagnosis}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Confidence: {(analysisResults.confidence * 100).toFixed(1)}%
-                          </p>
+                <div className="space-y-8">
+                  {/* Diagnosis Section */}
+                  <div className="bg-white rounded-xl p-6 shadow-md border-l-4 border-blue-500">
+                    <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                      Primary Diagnosis
+                    </h3>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-3">
+                      <p className="text-xl font-semibold text-blue-700">{analysisResults.diagnosis}</p>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-gray-600">Diagnostic Confidence:</span>
+                      <div className="ml-3 flex items-center">
+                        <div className="w-32 bg-gray-200 rounded-full h-2 mr-2">
+                          <div 
+                            className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${analysisResults.confidence * 100}%` }}
+                          ></div>
                         </div>
+                        <span className="text-lg font-bold text-blue-600">
+                          {(analysisResults.confidence * 100).toFixed(1)}%
+                        </span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Detailed Findings */}
-                    <div className="space-y-3">
-                      <h5 className="font-semibold text-foreground">Detailed Findings</h5>
-                      {Object.entries(analysisResults.findings).map(([key, value], index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <span className="font-medium text-foreground capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
-                          </span>
-                          <div className="text-right">
-                            <span className="text-sm text-primary font-medium">{value as string}</span>
-                          </div>
+                  {/* Detailed Findings */}
+                  <div className="bg-white rounded-xl p-6 shadow-md border-l-4 border-green-500">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                      <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                      Clinical Findings
+                    </h3>
+                    <div className="grid gap-4">
+                      {Object.entries(analysisResults.findings).map(([key, value]) => (
+                        <div key={key} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-4 border border-gray-200">
+                          <h4 className="font-semibold text-gray-700 mb-2 capitalize text-sm tracking-wide">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </h4>
+                          <p className="text-gray-800 leading-relaxed">{String(value)}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Recommendations */}
-                  <div>
-                    <h5 className="font-semibold text-foreground mb-4">Health Recommendations</h5>
-                    <div className="space-y-3">
-                    {analysisResults.recommendations.split('\n').filter(rec => rec.trim()).map((rec: string, index: number) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{rec.replace(/^[•\-]\s*/, '')}</span>
+                  {/* Health Recommendations */}
+                  <div className="bg-white rounded-xl p-6 shadow-md border-l-4 border-purple-500">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                      <span className="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>
+                      Health Recommendations & Next Steps
+                    </h3>
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                      <div className="prose prose-lg max-w-none">
+                        <p className="text-gray-800 leading-relaxed whitespace-pre-line font-medium">
+                          {analysisResults.recommendations}
+                        </p>
                       </div>
-                    ))}
-                    </div>
-
-                    <div className="mt-8 p-4 bg-secondary/10 rounded-lg">
-                      <h6 className="font-medium text-foreground mb-2">Important Notice</h6>
-                      <p className="text-sm text-muted-foreground">
-                        This AI analysis is for informational purposes only and should not 
-                        replace professional medical diagnosis. Please consult with a qualified 
-                        healthcare provider for proper medical evaluation.
-                      </p>
-                    </div>
-
-                    <div className="mt-6 space-y-3">
-                      <Button variant="hero" size="lg" className="w-full">
-                        Download Report
-                      </Button>
-                      <Button variant="outline" size="lg" className="w-full" onClick={handleReset}>
-                        Analyze Another Scan
-                      </Button>
                     </div>
                   </div>
+
+                  {/* Important Notice */}
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
+                    <div className="flex items-start">
+                      <div className="w-6 h-6 text-amber-600 mr-3 mt-1">⚠️</div>
+                      <div>
+                        <h4 className="font-bold text-amber-800 mb-2">Important Medical Disclaimer</h4>
+                        <p className="text-amber-700 text-sm leading-relaxed">
+                          This AI analysis is for informational purposes only and should not replace professional medical consultation. 
+                          Always consult with qualified healthcare professionals for proper diagnosis and treatment planning.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button variant="nephro" size="lg" className="w-full hover-scale">
+                      <FileImage className="h-5 w-5 mr-2" />
+                      Download Report
+                    </Button>
+                    <Button variant="outline" size="lg" className="w-full hover-scale" onClick={handleReset}>
+                      <Upload className="h-5 w-5 mr-2" />
+                      Analyze Another Scan
+                    </Button>
+                  </div>
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         </div>

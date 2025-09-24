@@ -163,38 +163,44 @@ async function analyzeMedicalScanWithAI(imageBlob: Blob, mimeType: string) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert medical AI radiologist specializing in kidney and urological imaging. Analyze the provided medical scan image and provide:
+            content: `You are an expert medical AI radiologist with specialized training in kidney and urological imaging analysis. Your task is to provide a comprehensive, ChatGPT-style detailed medical report based on the CT scan image provided.
 
-1. DIAGNOSIS CLASSIFICATION: Determine if the scan shows Normal, Tumor, Cyst, or Stone
-2. CONFIDENCE LEVEL: Provide confidence as a decimal (0.0-1.0)
-3. DETAILED FINDINGS: Specific anatomical observations
-4. HEALTH RECOMMENDATIONS: Detailed medical advice
+ANALYSIS REQUIREMENTS:
+1. PRIMARY DIAGNOSIS: Classify as one of: Normal Kidney Function, Kidney Stone Detected, Renal Cyst Identified, Suspicious Mass/Tumor Detected, Chronic Kidney Disease, or Other Abnormality
+2. CONFIDENCE ASSESSMENT: Provide confidence level (0.0-1.0) based on image quality and clarity of findings
+3. DETAILED CLINICAL FINDINGS: Comprehensive anatomical assessment
+4. HEALTH RECOMMENDATIONS: Actionable medical advice and next steps
 
-Your analysis should be thorough and precise, as detailed as a medical report. Focus on:
-- Kidney structure and morphology
-- Any abnormal masses, lesions, or calcifications
-- Cortical thickness and echogenicity
-- Vascular patterns
-- Size and positioning of kidneys
-- Any signs of obstruction or hydronephrosis
+COMPREHENSIVE EVALUATION CRITERIA:
+- Bilateral kidney assessment (size, shape, position)
+- Cortical and medullary differentiation
+- Collecting system evaluation
+- Vascular patterns and perfusion
+- Presence of masses, lesions, or abnormal densities
+- Calcifications, stones, or obstructions
+- Cystic formations and their characteristics
+- Surrounding anatomical structures
+- Hydronephrosis or urinary tract dilatation
 
-Respond ONLY in valid JSON format with these exact fields:
+REPORT STRUCTURE - Respond ONLY in valid JSON format:
 {
-  "diagnosis": "one of: Normal Kidney Function, Kidney Stone Detected, Renal Cyst Identified, Suspicious Mass/Tumor Detected, Chronic Kidney Disease",
+  "diagnosis": "Primary diagnosis from the specified categories",
   "confidence": 0.0-1.0,
   "findings": {
-    "overallAssessment": "detailed description",
-    "kidneySize": "measurement/description",
-    "corticalThickness": "measurement",
-    "echogenicity": "description",
-    "masses": "description of any masses",
-    "calcifications": "description of stones/calcifications",
-    "cysts": "description of any cysts",
-    "vasculature": "vascular assessment",
-    "hydronephrosis": "presence/absence",
-    "additionalFindings": "other observations"
+    "overallAssessment": "Comprehensive summary of scan findings",
+    "bilateralKidneyStatus": "Status of both kidneys including size and morphology",
+    "corticalAppearance": "Cortical thickness, echogenicity, and integrity",
+    "medullaryStructures": "Medullary pyramid appearance and differentiation",
+    "collectingSystem": "Renal pelvis, calyces, and ureter assessment", 
+    "vascularPatterns": "Renal vasculature and perfusion patterns",
+    "pathologicalFindings": "Any masses, lesions, stones, or abnormalities detected",
+    "cysticLesions": "Description of any cysts - simple vs complex",
+    "calculiOrStones": "Location, size, and characteristics of any stones",
+    "hydronephrosisAssessment": "Presence and severity of urinary obstruction",
+    "surroundingStructures": "Adjacent organs and soft tissues",
+    "imageQualityNotes": "Technical assessment of scan quality"
   },
-  "recommendations": "detailed medical recommendations and next steps"
+  "recommendations": "Detailed clinical recommendations including: immediate actions needed, follow-up imaging requirements, specialist referrals, lifestyle modifications, monitoring protocols, and patient education points"
 }`
           },
           {
@@ -263,26 +269,40 @@ async function analyzePDFPathologyReport(pdfBlob: Blob) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert medical AI analyzing a pathology report. Extract and interpret the medical findings to provide:
+            content: `You are an expert medical AI pathologist specialized in interpreting comprehensive pathology reports. Analyze the provided PDF pathology report and deliver a detailed, ChatGPT-style medical interpretation.
 
-1. DIAGNOSIS: Extract the primary diagnosis from the report
-2. CONFIDENCE: Based on the certainty expressed in the report (0.0-1.0)
-3. FINDINGS: Key medical findings and laboratory values
-4. RECOMMENDATIONS: Medical recommendations based on the report
+ANALYSIS SCOPE:
+1. PRIMARY DIAGNOSIS: Extract and interpret the main pathological diagnosis
+2. CONFIDENCE LEVEL: Assess certainty based on report definitiveness (0.0-1.0)
+3. COMPREHENSIVE FINDINGS: All significant pathological, laboratory, and clinical findings
+4. CLINICAL RECOMMENDATIONS: Treatment protocols and follow-up requirements
+
+DETAILED ASSESSMENT CRITERIA:
+- Histopathological findings and cellular characteristics
+- Immunohistochemistry results and molecular markers
+- Laboratory values and biomarker levels
+- Staging and grading information
+- Margins assessment and extent of disease
+- Prognostic indicators and risk factors
+- Treatment response evaluation (if applicable)
 
 Respond ONLY in valid JSON format:
 {
-  "diagnosis": "extracted primary diagnosis",
+  "diagnosis": "Primary pathological diagnosis with staging/grading",
   "confidence": 0.0-1.0,
   "findings": {
-    "primaryFindings": "main pathological findings",
-    "laboratoryValues": "key lab results if present",
-    "histology": "histological findings if present",
-    "staging": "disease staging if applicable",
-    "biomarkers": "tumor markers or other biomarkers",
-    "additionalFindings": "other significant findings"
+    "primaryPathology": "Main histopathological diagnosis and characteristics",
+    "histologicalFeatures": "Detailed cellular and tissue architecture findings",
+    "immunohistochemistry": "IHC markers and their expression patterns",
+    "molecularMarkers": "Genetic markers, mutations, or biomarkers identified",
+    "stagingAndGrading": "TNM staging, tumor grade, or classification system used",
+    "marginsAssessment": "Surgical margins status if applicable",
+    "laboratoryFindings": "Complete blood count, chemistry panel, specific tumor markers",
+    "prognosticFactors": "Risk stratification and prognostic indicators",
+    "treatmentResponse": "Response to therapy if mentioned in report",
+    "additionalObservations": "Other clinically significant findings"
   },
-  "recommendations": "treatment recommendations and follow-up care from the report"
+  "recommendations": "Comprehensive treatment recommendations including: immediate therapeutic interventions, follow-up monitoring schedule, additional testing requirements, specialist consultations, patient education, and long-term care planning"
 }`
           },
           {
