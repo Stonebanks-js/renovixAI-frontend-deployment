@@ -37,6 +37,30 @@ export const useScanAnalysis = () => {
         throw new Error('User not authenticated');
       }
 
+      // Ensure profile exists (handles legacy accounts without profile rows)
+      const { data: existingProfile, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (profileCheckError) {
+        console.error('Profile check error:', profileCheckError);
+      }
+      if (!existingProfile) {
+        const defaultDob = new Date();
+        defaultDob.setFullYear(defaultDob.getFullYear() - 25);
+        const { error: profileInsertError } = await supabase.from('profiles').insert({
+          user_id: user.id,
+          full_name: (user.user_metadata as any)?.full_name || user.email?.split('@')[0] || 'User',
+          gender: 'Not specified',
+          marital_status: 'Not specified',
+          date_of_birth: defaultDob.toISOString().slice(0, 10)
+        });
+        if (profileInsertError) {
+          console.warn('Profile insert error:', profileInsertError);
+        }
+      }
+
       // Create scan session
       const { data: session, error: sessionError } = await supabase
         .from('scan_sessions')

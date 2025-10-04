@@ -42,8 +42,8 @@ const Navigation = () => {
                 <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
               </Link>
             ))}
-            <Button variant="hero" size="default">
-              Get Started
+            <Button variant="hero" size="default" asChild>
+              <Link to="/auth">Sign In</Link>
             </Button>
           </div>
 
@@ -77,8 +77,8 @@ const Navigation = () => {
                   {item.name}
                 </Link>
               ))}
-              <Button variant="hero" size="default" className="w-full mt-4">
-                Get Started
+              <Button variant="hero" size="default" className="w-full mt-4" asChild>
+                <Link to="/auth">Sign In</Link>
               </Button>
             </div>
           </div>
