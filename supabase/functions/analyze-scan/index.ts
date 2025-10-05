@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,8 +20,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let sessionId: string | undefined;
+
   try {
-    const { sessionId } = await req.json();
+    const requestBody = await req.json();
+    sessionId = requestBody.sessionId;
     console.log('Starting analysis for session:', sessionId);
     console.log('NephroScan API URL:', nephroscanApiUrl);
 
@@ -126,17 +130,7 @@ serve(async (req) => {
     console.error('Error in analyze-scan function:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
-    // Extract sessionId from the original request
-    const bodyText = await req.clone().text();
-    let sessionId;
-    try {
-      const body = JSON.parse(bodyText);
-      sessionId = body.sessionId;
-    } catch (e) {
-      console.error('Could not parse sessionId from request');
-    }
-    
-    // Update session status to failed
+    // Update session status to failed if we have sessionId
     if (sessionId) {
       try {
         await supabase
@@ -166,12 +160,24 @@ serve(async (req) => {
 async function analyzeMedicalScanWithAI(imageBlob: Blob, mimeType: string) {
   try {
     console.log('Calling NephroScan AI backend at:', nephroscanApiUrl);
-    console.log('Image blob size:', imageBlob.size, 'bytes');
+    console.log('Original image blob size:', imageBlob.size, 'bytes');
     console.log('Image mime type:', mimeType);
     
-    // Create FormData and append the image file
+    // Resize image to 160x160 as required by the NephroScan model
+    console.log('Resizing image to 160x160...');
+    const imageBuffer = await imageBlob.arrayBuffer();
+    const image = await Image.decode(new Uint8Array(imageBuffer));
+    
+    // Resize to 160x160 (expected by the model)
+    const resizedImage = image.resize(160, 160);
+    const resizedBuffer = await resizedImage.encodeJPEG(90);
+    const resizedBlob = new Blob([resizedBuffer], { type: 'image/jpeg' });
+    
+    console.log('Resized image size:', resizedBlob.size, 'bytes');
+    
+    // Create FormData and append the resized image file
     const formData = new FormData();
-    formData.append('file', imageBlob, 'scan.jpg');
+    formData.append('file', resizedBlob, 'scan.jpg');
     
     console.log('Sending request to:', `${nephroscanApiUrl}/api/predict`);
     

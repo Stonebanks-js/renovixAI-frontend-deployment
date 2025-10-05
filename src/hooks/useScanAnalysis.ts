@@ -125,6 +125,7 @@ export const useScanAnalysis = () => {
           },
           (payload) => {
             const updatedSession = payload.new as any;
+            console.log('Session update:', updatedSession);
             setAnalysisProgress(updatedSession.progress);
             
             if (updatedSession.status === 'completed') {
@@ -133,7 +134,7 @@ export const useScanAnalysis = () => {
               setIsAnalyzing(false);
               toast({
                 title: "Analysis Failed",
-                description: "The scan analysis could not be completed. Please try again.",
+                description: "The AI analysis encountered an error. Please try again with a different image.",
                 variant: "destructive",
               });
             }
@@ -151,21 +152,29 @@ export const useScanAnalysis = () => {
       setIsAnalyzing(false);
       
       // More specific error messages
-      let errorMessage = "An error occurred during upload.";
+      let errorMessage = "Failed to upload and start the analysis.";
+      let errorTitle = "Upload Failed";
+      
       if (error instanceof Error) {
+        console.log('Error message:', error.message);
         if (error.message.includes('scan session')) {
+          errorTitle = "Session Error";
           errorMessage = "Failed to create scan session. Please try logging out and back in.";
         } else if (error.message.includes('upload')) {
           errorMessage = "Failed to upload image. Please check your file and try again.";
         } else if (error.message.includes('not authenticated')) {
+          errorTitle = "Authentication Required";
           errorMessage = "Please log in to use the scan analysis feature.";
+        } else if (error.message.includes('start analysis')) {
+          errorTitle = "Analysis Error";
+          errorMessage = "The analysis service is temporarily unavailable. Please try again in a few moments.";
         } else {
-          errorMessage = error.message;
+          errorMessage = error.message || errorMessage;
         }
       }
       
       toast({
-        title: "Upload Failed",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
       });
