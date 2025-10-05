@@ -22,6 +22,7 @@ serve(async (req) => {
   try {
     const { sessionId } = await req.json();
     console.log('Starting analysis for session:', sessionId);
+    console.log('NephroScan API URL:', nephroscanApiUrl);
 
     // Get the session and image details
     const { data: session, error: sessionError } = await supabase
@@ -123,23 +124,38 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in analyze-scan function:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
-    // Update session status to failed if we have sessionId
+    // Extract sessionId from the original request
+    const bodyText = await req.clone().text();
+    let sessionId;
     try {
-      const { sessionId } = await req.json();
-      if (sessionId) {
+      const body = JSON.parse(bodyText);
+      sessionId = body.sessionId;
+    } catch (e) {
+      console.error('Could not parse sessionId from request');
+    }
+    
+    // Update session status to failed
+    if (sessionId) {
+      try {
         await supabase
           .from('scan_sessions')
-          .update({ status: 'failed' })
+          .update({ 
+            status: 'failed',
+            progress: 0
+          })
           .eq('id', sessionId);
+        console.log('Updated session to failed status');
+      } catch (updateError) {
+        console.error('Failed to update session status:', updateError);
       }
-    } catch (updateError) {
-      console.error('Failed to update session status:', updateError);
     }
 
     return new Response(JSON.stringify({ 
       error: 'Analysis failed',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error',
+      sessionId 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -150,24 +166,33 @@ serve(async (req) => {
 async function analyzeMedicalScanWithAI(imageBlob: Blob, mimeType: string) {
   try {
     console.log('Calling NephroScan AI backend at:', nephroscanApiUrl);
+    console.log('Image blob size:', imageBlob.size, 'bytes');
+    console.log('Image mime type:', mimeType);
     
     // Create FormData and append the image file
     const formData = new FormData();
     formData.append('file', imageBlob, 'scan.jpg');
     
+    console.log('Sending request to:', `${nephroscanApiUrl}/api/predict`);
+    
     const response = await fetch(`${nephroscanApiUrl}/api/predict`, {
       method: 'POST',
       body: formData,
+      headers: {
+        'Accept': 'application/json',
+      },
     });
+
+    console.log('Response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('NephroScan API error:', errorText);
+      console.error('NephroScan API error response:', errorText);
       throw new Error(`NephroScan API error: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('NephroScan API response:', result);
+    console.log('NephroScan API response:', JSON.stringify(result));
     
     // Map the backend response to our expected format
     const prediction = result.prediction || 'Unknown';
@@ -277,7 +302,8 @@ async function analyzeMedicalScanWithAI(imageBlob: Blob, mimeType: string) {
 
   } catch (error) {
     console.error('AI analysis error:', error);
-    throw error;
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    throw new Error(`Failed to analyze scan: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
