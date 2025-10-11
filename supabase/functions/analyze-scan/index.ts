@@ -25,10 +25,21 @@ serve(async (req) => {
   try {
     const requestBody = await req.json();
     sessionId = requestBody.sessionId;
-    console.log('Starting analysis for session:', sessionId);
+    
+    if (!sessionId) {
+      console.error('No sessionId provided in request');
+      return new Response(JSON.stringify({ error: 'Session ID is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log('=== Starting analysis for session:', sessionId, '===');
     console.log('NephroScan API URL:', nephroscanApiUrl);
+    console.log('Supabase URL:', supabaseUrl);
 
     // Get the session and image details
+    console.log('Fetching session and image data...');
     const { data: session, error: sessionError } = await supabase
       .from('scan_sessions')
       .select(`
@@ -40,22 +51,40 @@ serve(async (req) => {
 
     if (sessionError) {
       console.error('Session fetch error:', sessionError);
-      return new Response(JSON.stringify({ error: 'Session not found' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Session not found',
+        details: sessionError.message 
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log('Session found:', session.id, 'Status:', session.status);
+    
     const imageData = session.scan_images[0];
     if (!imageData) {
+      console.error('No image data found for session');
       throw new Error('No image found for session');
     }
+    
+    console.log('Image data:', {
+      fileName: imageData.file_name,
+      mimeType: imageData.mime_type,
+      size: imageData.file_size,
+      path: imageData.storage_path
+    });
 
     // Update status to processing
-    await supabase
+    console.log('Updating session status to processing...');
+    const { error: updateError } = await supabase
       .from('scan_sessions')
       .update({ status: 'processing', progress: 10 })
       .eq('id', sessionId);
+    
+    if (updateError) {
+      console.error('Failed to update session status:', updateError);
+    }
 
     // Real AI analysis pipeline
     const stages = [
@@ -76,13 +105,17 @@ serve(async (req) => {
     }
 
     // Get image from storage
+    console.log('Downloading image from storage bucket...');
     const { data: imageBlob, error: downloadError } = await supabase.storage
       .from('medical-scans')
       .download(imageData.storage_path);
 
     if (downloadError) {
+      console.error('Storage download error:', downloadError);
       throw new Error(`Failed to download image: ${downloadError.message}`);
     }
+    
+    console.log('Image downloaded successfully, size:', imageBlob.size, 'bytes');
 
     let analysisResults;
 
@@ -96,6 +129,7 @@ serve(async (req) => {
     }
 
     // Store results in database
+    console.log('Storing analysis results in database...');
     const { error: resultError } = await supabase
       .from('scan_results')
       .insert({
@@ -110,14 +144,21 @@ serve(async (req) => {
       console.error('Result storage error:', resultError);
       throw resultError;
     }
+    
+    console.log('Results stored successfully');
 
     // Update session to completed
-    await supabase
+    console.log('Updating session status to completed...');
+    const { error: completionError } = await supabase
       .from('scan_sessions')
       .update({ status: 'completed', progress: 100 })
       .eq('id', sessionId);
+    
+    if (completionError) {
+      console.error('Failed to update session to completed:', completionError);
+    }
 
-    console.log('Analysis completed for session:', sessionId);
+    console.log('=== Analysis completed successfully for session:', sessionId, '===');
 
     return new Response(JSON.stringify({ 
       success: true,

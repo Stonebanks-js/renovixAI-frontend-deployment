@@ -31,11 +31,32 @@ export const useScanAnalysis = () => {
       setAnalysisProgress(0);
       setAnalysisResults(null);
 
+      // Validation: File size check (10MB limit)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('file_too_large');
+      }
+
+      // Validation: File type check
+      const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/dicom'];
+      const validDocTypes = ['application/pdf'];
+      const isValidImage = validImageTypes.includes(file.type);
+      const isValidDoc = validDocTypes.includes(file.type);
+      
+      if (!isValidImage && !isValidDoc) {
+        throw new Error('invalid_file_type');
+      }
+
+      console.log('Starting upload and analysis for file:', file.name, 'Type:', file.type, 'Size:', file.size);
+
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
+        console.error('Authentication error:', userError);
         throw new Error('User not authenticated');
       }
+
+      console.log('User authenticated:', user.id);
 
       // Ensure profile exists (handles legacy accounts without profile rows)
       const { data: existingProfile, error: profileCheckError } = await supabase
@@ -61,7 +82,10 @@ export const useScanAnalysis = () => {
         }
       }
 
-      // Create scan session
+      // Step 1: Create scan session
+      console.log('Step 1: Creating scan session...');
+      setAnalysisProgress(5);
+      
       const { data: session, error: sessionError } = await supabase
         .from('scan_sessions')
         .insert({
@@ -73,22 +97,34 @@ export const useScanAnalysis = () => {
 
       if (sessionError) {
         console.error('Session creation error:', sessionError);
-        throw new Error(`Failed to create scan session: ${sessionError.message}`);
+        throw new Error(`create_session_failed: ${sessionError.message}`);
       }
 
+      console.log('Session created successfully:', session.id);
       setCurrentSession(session as ScanSession);
+      setAnalysisProgress(10);
 
-      // Upload image to storage
+      // Step 2: Upload image to storage
+      console.log('Step 2: Uploading file to storage...');
       const fileName = `${user.id}/${session.id}/${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('medical-scans')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) {
-        throw new Error('Failed to upload image');
+        console.error('Upload error:', uploadError);
+        throw new Error(`upload_failed: ${uploadError.message}`);
       }
 
-      // Store image metadata
+      console.log('File uploaded successfully:', uploadData.path);
+      setAnalysisProgress(15);
+
+      // Step 3: Store image metadata
+      console.log('Step 3: Storing image metadata...');
       const { error: imageError } = await supabase
         .from('scan_images')
         .insert({
@@ -100,17 +136,25 @@ export const useScanAnalysis = () => {
         });
 
       if (imageError) {
-        throw new Error('Failed to store image metadata');
+        console.error('Image metadata error:', imageError);
+        throw new Error(`metadata_failed: ${imageError.message}`);
       }
 
-      // Start analysis via edge function
-      const { error: analysisError } = await supabase.functions.invoke('analyze-scan', {
+      console.log('Image metadata stored successfully');
+      setAnalysisProgress(20);
+
+      // Step 4: Start analysis via edge function
+      console.log('Step 4: Starting AI analysis...');
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-scan', {
         body: { sessionId: session.id }
       });
 
       if (analysisError) {
-        throw new Error('Failed to start analysis');
+        console.error('Analysis invocation error:', analysisError);
+        throw new Error(`analysis_start_failed: ${analysisError.message}`);
       }
+
+      console.log('Analysis started successfully:', analysisData);
 
       // Set up real-time subscription to track progress
       const channel = supabase
@@ -150,24 +194,37 @@ export const useScanAnalysis = () => {
     } catch (error) {
       console.error('Error during scan analysis:', error);
       setIsAnalyzing(false);
+      setAnalysisProgress(0);
       
-      // More specific error messages
+      // Specific error messages based on error codes
       let errorMessage = "Failed to upload and start the analysis.";
       let errorTitle = "Upload Failed";
       
       if (error instanceof Error) {
-        console.log('Error message:', error.message);
-        if (error.message.includes('scan session')) {
-          errorTitle = "Session Error";
-          errorMessage = "Failed to create scan session. Please try logging out and back in.";
-        } else if (error.message.includes('upload')) {
-          errorMessage = "Failed to upload image. Please check your file and try again.";
+        console.log('Caught error:', error.message);
+        
+        // Check for specific error codes
+        if (error.message === 'file_too_large') {
+          errorTitle = "File Too Large";
+          errorMessage = "The selected file exceeds 10MB. Please choose a smaller file.";
+        } else if (error.message === 'invalid_file_type') {
+          errorTitle = "Invalid File Type";
+          errorMessage = "Please upload a valid medical scan (JPG, PNG, DICOM) or PDF pathology report.";
+        } else if (error.message.includes('create_session_failed')) {
+          errorTitle = "Session Creation Failed";
+          errorMessage = "Unable to create a scan session. Please try again or contact support.";
+        } else if (error.message.includes('upload_failed')) {
+          errorTitle = "Upload Failed";
+          errorMessage = "File upload failed. Please check your connection and try again.";
+        } else if (error.message.includes('metadata_failed')) {
+          errorTitle = "Metadata Error";
+          errorMessage = "Failed to store file information. Please try again.";
+        } else if (error.message.includes('analysis_start_failed')) {
+          errorTitle = "Analysis Error";
+          errorMessage = "Unable to start AI analysis. The service may be temporarily unavailable.";
         } else if (error.message.includes('not authenticated')) {
           errorTitle = "Authentication Required";
-          errorMessage = "Please log in to use the scan analysis feature.";
-        } else if (error.message.includes('start analysis')) {
-          errorTitle = "Analysis Error";
-          errorMessage = "The analysis service is temporarily unavailable. Please try again in a few moments.";
+          errorMessage = "Please log in to use the AI scan analysis feature.";
         } else {
           errorMessage = error.message || errorMessage;
         }
