@@ -49,38 +49,11 @@ export const useScanAnalysis = () => {
 
       console.log('Starting upload and analysis for file:', file.name, 'Type:', file.type, 'Size:', file.size);
 
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('Authentication error:', userError);
-        throw new Error('User not authenticated');
-      }
-
-      console.log('User authenticated:', user.id);
-
-      // Ensure profile exists (handles legacy accounts without profile rows)
-      const { data: existingProfile, error: profileCheckError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (profileCheckError) {
-        console.error('Profile check error:', profileCheckError);
-      }
-      if (!existingProfile) {
-        const defaultDob = new Date();
-        defaultDob.setFullYear(defaultDob.getFullYear() - 25);
-        const { error: profileInsertError } = await supabase.from('profiles').insert({
-          user_id: user.id,
-          full_name: (user.user_metadata as any)?.full_name || user.email?.split('@')[0] || 'User',
-          gender: 'Not specified',
-          marital_status: 'Not specified',
-          date_of_birth: defaultDob.toISOString().slice(0, 10)
-        });
-        if (profileInsertError) {
-          console.warn('Profile insert error:', profileInsertError);
-        }
-      }
+      // Get current user (optional - can be null for anonymous uploads)
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || null;
+      
+      console.log('Upload initiated by:', userId ? `user ${userId}` : 'anonymous user');
 
       // Step 1: Create scan session
       console.log('Step 1: Creating scan session...');
@@ -89,7 +62,7 @@ export const useScanAnalysis = () => {
       const { data: session, error: sessionError } = await supabase
         .from('scan_sessions')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           status: 'pending'
         })
         .select()
@@ -106,7 +79,8 @@ export const useScanAnalysis = () => {
 
       // Step 2: Upload image to storage
       console.log('Step 2: Uploading file to storage...');
-      const fileName = `${user.id}/${session.id}/${Date.now()}-${file.name}`;
+      const uploadPath = userId ? `${userId}/${session.id}` : `anonymous/${session.id}`;
+      const fileName = `${uploadPath}/${Date.now()}-${file.name}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('medical-scans')
@@ -222,9 +196,6 @@ export const useScanAnalysis = () => {
         } else if (error.message.includes('analysis_start_failed')) {
           errorTitle = "Analysis Error";
           errorMessage = "Unable to start AI analysis. The service may be temporarily unavailable.";
-        } else if (error.message.includes('not authenticated')) {
-          errorTitle = "Authentication Required";
-          errorMessage = "Please log in to use the AI scan analysis feature.";
         } else {
           errorMessage = error.message || errorMessage;
         }
