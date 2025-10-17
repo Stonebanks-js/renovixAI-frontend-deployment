@@ -166,6 +166,7 @@ export type Database = {
           created_at: string
           id: string
           progress: number | null
+          session_token: string | null
           status: string
           updated_at: string
           user_id: string
@@ -174,6 +175,7 @@ export type Database = {
           created_at?: string
           id?: string
           progress?: number | null
+          session_token?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -182,6 +184,7 @@ export type Database = {
           created_at?: string
           id?: string
           progress?: number | null
+          session_token?: string | null
           status?: string
           updated_at?: string
           user_id?: string
