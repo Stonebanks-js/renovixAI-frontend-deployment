@@ -127,7 +127,7 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
             <Activity className="w-5 h-5 text-primary" />
             Clinical Findings & Observations
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             {Object.entries(results.findings).map(([key, value], idx) => (
               <div 
                 key={key}
@@ -139,7 +139,7 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
                   <h4 className="text-sm font-bold text-primary mb-2 capitalize tracking-wide">
                     {key.replace(/([A-Z])/g, ' $1').trim()}
                   </h4>
-                  <p className="text-sm text-foreground leading-relaxed">
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                     {String(value)}
                   </p>
                 </div>

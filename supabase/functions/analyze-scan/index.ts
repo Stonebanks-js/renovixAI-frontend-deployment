@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const nephroscanApiUrl = Deno.env.get('NEPHROSCAN_API_URL') || 'http://127.0.0.1:8000';
+const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -34,9 +33,7 @@ serve(async (req) => {
       });
     }
     
-    console.log('=== Starting analysis for session:', sessionId, '===');
-    console.log('NephroScan API URL:', nephroscanApiUrl);
-    console.log('Supabase URL:', supabaseUrl);
+    console.log('=== Starting AI analysis for session:', sessionId, '===');
 
     // Get the session and image details
     console.log('Fetching session and image data...');
@@ -86,23 +83,9 @@ serve(async (req) => {
       console.error('Failed to update session status:', updateError);
     }
 
-    // Real AI analysis pipeline
-    const stages = [
-      { progress: 20, message: 'Downloading image from storage...' },
-      { progress: 40, message: 'Preprocessing image for AI analysis...' },
-      { progress: 60, message: 'Running AI diagnostic model...' },
-      { progress: 80, message: 'Analyzing pathological patterns...' },
-      { progress: 95, message: 'Generating detailed medical report...' },
-    ];
-
-    for (const stage of stages) {
-      await supabase
-        .from('scan_sessions')
-        .update({ progress: stage.progress })
-        .eq('id', sessionId);
-      
-      console.log(`Stage: ${stage.message} (${stage.progress}%)`);
-    }
+    // Update progress stages
+    await supabase.from('scan_sessions').update({ progress: 20 }).eq('id', sessionId);
+    console.log('Downloading scan from storage...');
 
     // Get image from storage
     console.log('Downloading image from storage bucket...');
@@ -117,16 +100,29 @@ serve(async (req) => {
     
     console.log('Image downloaded successfully, size:', imageBlob.size, 'bytes');
 
+    // Update progress
+    await supabase.from('scan_sessions').update({ progress: 40 }).eq('id', sessionId);
+    console.log('Preparing file for AI analysis...');
+
     let analysisResults;
 
+    // Convert blob to base64 for Gemini
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
     // Check if it's a PDF document
     if (imageData.mime_type === 'application/pdf') {
-      console.log('Processing PDF pathology report...');
-      analysisResults = await analyzePDFPathologyReport(imageBlob);
+      console.log('Analyzing PDF pathology report with Gemini AI...');
+      await supabase.from('scan_sessions').update({ progress: 60 }).eq('id', sessionId);
+      analysisResults = await analyzePDFWithGemini(base64Data);
     } else {
-      console.log('Processing medical scan image...');
-      analysisResults = await analyzeMedicalScanWithAI(imageBlob, imageData.mime_type);
+      console.log('Analyzing medical scan image with Gemini AI...');
+      await supabase.from('scan_sessions').update({ progress: 60 }).eq('id', sessionId);
+      analysisResults = await analyzeImageWithGemini(base64Data, imageData.mime_type);
     }
+
+    await supabase.from('scan_sessions').update({ progress: 90 }).eq('id', sessionId);
+    console.log('Generating detailed report...');
 
     // Store results in database
     console.log('Storing analysis results in database...');
@@ -198,201 +194,248 @@ serve(async (req) => {
   }
 });
 
-async function analyzeMedicalScanWithAI(imageBlob: Blob, mimeType: string) {
+async function analyzeImageWithGemini(base64Image: string, mimeType: string) {
   try {
-    console.log('Calling NephroScan AI backend at:', nephroscanApiUrl);
-    console.log('Original image blob size:', imageBlob.size, 'bytes');
-    console.log('Image mime type:', mimeType);
+    console.log('Calling Gemini AI for image analysis...');
     
-    // Resize image to 160x160 as required by the NephroScan model
-    console.log('Resizing image to 160x160...');
-    const imageBuffer = await imageBlob.arrayBuffer();
-    const image = await Image.decode(new Uint8Array(imageBuffer));
-    
-    // Resize to 160x160 (expected by the model)
-    const resizedImage = image.resize(160, 160);
-    const resizedBuffer = await resizedImage.encodeJPEG(90);
-    const resizedBlob = new Blob([resizedBuffer], { type: 'image/jpeg' });
-    
-    console.log('Resized image size:', resizedBlob.size, 'bytes');
-    
-    // Create FormData and append the resized image file
-    const formData = new FormData();
-    formData.append('file', resizedBlob, 'scan.jpg');
-    
-    console.log('Sending request to:', `${nephroscanApiUrl}/api/predict`);
-    
-    const response = await fetch(`${nephroscanApiUrl}/api/predict`, {
+    const systemPrompt = `You are an expert medical radiologist specializing in kidney and renal imaging analysis. 
+You provide detailed, accurate medical assessments of CT scans, MRI scans, ultrasounds, and X-rays focusing on kidney health.
+
+Your analysis should include:
+1. Overall assessment of the scan
+2. Detailed findings organized by anatomical structures
+3. Identification of any abnormalities
+4. Confidence level in your assessment
+5. Specific, actionable medical recommendations
+
+Format your response as a detailed medical report that is both professional and understandable.
+Be specific about what you observe in the image. If you detect any concerning findings, clearly state them.
+Always recommend professional medical consultation for definitive diagnosis.`;
+
+    const userPrompt = `Please analyze this kidney/renal medical scan image and provide a comprehensive medical assessment.
+
+Provide your analysis in the following JSON format:
+{
+  "diagnosis": "Primary diagnosis or finding",
+  "confidence": 0.85,
+  "findings": {
+    "overallAssessment": "General overview of the scan",
+    "bilateralKidneyStatus": "Status of both kidneys",
+    "corticalAppearance": "Kidney cortex assessment",
+    "medullaryStructures": "Medullary structures evaluation",
+    "collectingSystem": "Collecting system status",
+    "vascularPatterns": "Vascular perfusion assessment",
+    "pathologicalFindings": "Any pathological findings",
+    "cysticLesions": "Cystic lesion assessment",
+    "calculiOrStones": "Stone detection",
+    "hydronephrosisAssessment": "Hydronephrosis evaluation",
+    "surroundingStructures": "Adjacent structures assessment",
+    "imageQualityNotes": "Image quality observations"
+  },
+  "recommendations": "Detailed medical recommendations and next steps"
+}
+
+Be thorough, specific, and medically accurate. If the image quality is poor or the scan type is unclear, note this in your assessment.`;
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
-      body: formData,
       headers: {
-        'Accept': 'application/json',
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0.3,
+      }),
     });
 
-    console.log('Response status:', response.status);
-
     if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a moment.');
+      }
+      if (response.status === 402) {
+        throw new Error('AI service requires additional credits. Please contact support.');
+      }
       const errorText = await response.text();
-      console.error('NephroScan API error response:', errorText);
-      throw new Error(`NephroScan API error: ${response.status} - ${errorText}`);
+      console.error('Gemini API error:', errorText);
+      throw new Error(`AI analysis failed: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log('NephroScan API response:', JSON.stringify(result));
+    const aiResponse = result.choices?.[0]?.message?.content;
     
-    // Map the backend response to our expected format
-    const prediction = result.prediction || 'Unknown';
-    
-    // Map predictions to medical diagnoses
-    const diagnosisMap: Record<string, any> = {
-      'Normal': {
-        diagnosis: 'Normal Kidney Function',
-        confidence: 0.92,
-        findings: {
-          overallAssessment: 'Both kidneys appear normal with no significant abnormalities detected.',
-          bilateralKidneyStatus: 'Normal bilateral kidney size, shape, and position',
-          corticalAppearance: 'Normal cortical thickness and echogenicity',
-          medullaryStructures: 'Normal medullary pyramid appearance',
-          collectingSystem: 'No hydronephrosis or collecting system dilatation',
-          vascularPatterns: 'Normal renal vasculature and perfusion',
-          pathologicalFindings: 'No masses, lesions, or abnormalities detected',
-          cysticLesions: 'No cystic formations observed',
-          calculiOrStones: 'No renal calculi identified',
-          hydronephrosisAssessment: 'No evidence of urinary obstruction',
-          surroundingStructures: 'Adjacent structures appear normal',
-          imageQualityNotes: 'Good quality scan with adequate visualization'
-        },
-        recommendations: 'Continue routine health monitoring. No immediate medical intervention required. Annual check-ups recommended for preventive care.'
-      },
-      'Cyst': {
-        diagnosis: 'Renal Cyst Identified',
-        confidence: 0.88,
-        findings: {
-          overallAssessment: 'Simple renal cyst detected - commonly benign finding',
-          bilateralKidneyStatus: 'Kidneys show normal size with cystic lesion present',
-          corticalAppearance: 'Cortex appears normal with cystic structure noted',
-          medullaryStructures: 'Medullary structures appear intact',
-          collectingSystem: 'Collecting system shows normal appearance',
-          vascularPatterns: 'Renal vasculature appears normal',
-          pathologicalFindings: 'Simple cyst identified - thin walls, no septations',
-          cysticLesions: 'Simple renal cyst with characteristic benign features',
-          calculiOrStones: 'No calculi detected',
-          hydronephrosisAssessment: 'No hydronephrosis present',
-          surroundingStructures: 'No mass effect on adjacent structures',
-          imageQualityNotes: 'Adequate scan quality for cyst characterization'
-        },
-        recommendations: 'Follow-up ultrasound in 6-12 months to monitor cyst size. Most simple renal cysts are benign and require no treatment. Consult urologist if cyst enlarges or causes symptoms.'
-      },
-      'Stone': {
-        diagnosis: 'Kidney Stone Detected',
-        confidence: 0.90,
-        findings: {
-          overallAssessment: 'Renal calculus identified requiring evaluation',
-          bilateralKidneyStatus: 'Kidney anatomy otherwise normal',
-          corticalAppearance: 'Normal cortical appearance',
-          medullaryStructures: 'Medullary pyramids appear normal',
-          collectingSystem: 'Calculus present in collecting system',
-          vascularPatterns: 'Renal perfusion appears adequate',
-          pathologicalFindings: 'Renal stone detected with typical calcification pattern',
-          cysticLesions: 'No cystic lesions identified',
-          calculiOrStones: 'Radio-opaque stone identified in renal pelvis or ureter',
-          hydronephrosisAssessment: 'Evaluate for degree of obstruction',
-          surroundingStructures: 'No significant inflammation in surrounding tissues',
-          imageQualityNotes: 'Stone clearly visualized on scan'
-        },
-        recommendations: 'Immediate urological consultation recommended. Increase fluid intake to 2-3 liters daily. Pain management may be necessary. Consider treatment options: observation for small stones (<5mm), medications, or surgical intervention for larger stones. Follow-up imaging to track stone passage.'
-      },
-      'Tumor': {
-        diagnosis: 'Suspicious Mass/Tumor Detected',
-        confidence: 0.85,
-        findings: {
-          overallAssessment: 'Concerning renal mass requiring urgent evaluation',
-          bilateralKidneyStatus: 'Mass lesion identified requiring characterization',
-          corticalAppearance: 'Cortical disruption noted in area of mass',
-          medullaryStructures: 'Architecture distorted by mass lesion',
-          collectingSystem: 'Potential mass effect on collecting system',
-          vascularPatterns: 'Increased vascularity may be present',
-          pathologicalFindings: 'Solid renal mass with irregular margins detected',
-          cysticLesions: 'Complex mass - requires differentiation from simple cyst',
-          calculiOrStones: 'No calculi identified',
-          hydronephrosisAssessment: 'Assess for compression effects',
-          surroundingStructures: 'Evaluate for local extension',
-          imageQualityNotes: 'Mass clearly visualized, additional imaging recommended'
-        },
-        recommendations: 'URGENT: Immediate referral to urologic oncologist required. Contrast-enhanced CT or MRI needed for complete characterization. Biopsy may be indicated. Staging workup required if malignancy suspected. Do not delay evaluation - early detection improves outcomes significantly.'
-      }
-    };
-    
-    // Get diagnosis based on prediction, default to tumor if unknown
-    const diagnosisData = diagnosisMap[prediction] || {
-      diagnosis: 'Abnormality Detected - Further Analysis Required',
-      confidence: 0.75,
-      findings: {
-        overallAssessment: `Scan analysis completed. Classification: ${prediction}`,
-        bilateralKidneyStatus: 'Requires detailed radiological review',
-        corticalAppearance: 'Further evaluation needed',
-        medullaryStructures: 'Clinical correlation recommended',
-        collectingSystem: 'Specialist review advised',
-        vascularPatterns: 'Additional imaging may be beneficial',
-        pathologicalFindings: `AI detected: ${prediction}`,
-        cysticLesions: 'Comprehensive assessment recommended',
-        calculiOrStones: 'Detailed analysis needed',
-        hydronephrosisAssessment: 'Clinical evaluation required',
-        surroundingStructures: 'Further investigation recommended',
-        imageQualityNotes: 'Scan processed successfully'
-      },
-      recommendations: 'Consult with a nephrologist or urologist for comprehensive evaluation and treatment planning based on clinical symptoms and medical history.'
-    };
+    if (!aiResponse) {
+      throw new Error('No response from AI model');
+    }
 
-    return diagnosisData;
+    console.log('AI Response received, parsing...');
+    
+    // Extract JSON from the response
+    let analysisData;
+    try {
+      // Try to parse the entire response as JSON
+      analysisData = JSON.parse(aiResponse);
+    } catch {
+      // If that fails, try to extract JSON from markdown code blocks
+      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       aiResponse.match(/```\s*([\s\S]*?)\s*```/) ||
+                       aiResponse.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        analysisData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      } else {
+        // Fallback: create structured response from text
+        analysisData = {
+          diagnosis: 'Medical Scan Analysis',
+          confidence: 0.85,
+          findings: {
+            overallAssessment: aiResponse.substring(0, 500),
+            detailedAnalysis: aiResponse
+          },
+          recommendations: 'Please consult with a healthcare professional for a comprehensive evaluation.'
+        };
+      }
+    }
+
+    return analysisData;
 
   } catch (error) {
-    console.error('AI analysis error:', error);
-    console.error('Error details:', error instanceof Error ? error.message : String(error));
-    throw new Error(`Failed to analyze scan: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('Gemini analysis error:', error);
+    throw new Error(`AI analysis failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-async function analyzePDFPathologyReport(pdfBlob: Blob) {
+async function analyzePDFWithGemini(base64PDF: string) {
   try {
-    console.log('Processing PDF with NephroScan backend...');
+    console.log('Calling Gemini AI for PDF analysis...');
     
-    const formData = new FormData();
-    formData.append('file', pdfBlob, 'report.pdf');
-    
-    const response = await fetch(`${nephroscanApiUrl}/api/predict`, {
+    const systemPrompt = `You are an expert medical pathologist specializing in interpreting pathology reports and laboratory results related to kidney and renal health.
+
+Your analysis should include:
+1. Key findings from the pathology report
+2. Clinical significance of the results
+3. Interpretation of laboratory values
+4. Prognostic factors
+5. Treatment implications
+6. Specific, actionable recommendations
+
+Provide a comprehensive yet understandable interpretation of the pathology report.
+Always recommend professional medical consultation for treatment planning.`;
+
+    const userPrompt = `Please analyze this medical pathology report PDF and provide a comprehensive interpretation.
+
+Provide your analysis in the following JSON format:
+{
+  "diagnosis": "Primary pathology finding",
+  "confidence": 0.85,
+  "findings": {
+    "primaryPathology": "Main pathological findings",
+    "histologicalFeatures": "Histological characteristics",
+    "immunohistochemistry": "Immunohistochemistry results",
+    "molecularMarkers": "Molecular marker analysis",
+    "stagingAndGrading": "Disease staging and grading",
+    "marginsAssessment": "Surgical margins if applicable",
+    "laboratoryFindings": "Key laboratory values",
+    "prognosticFactors": "Prognostic indicators",
+    "treatmentResponse": "Treatment response if applicable",
+    "additionalObservations": "Other relevant observations"
+  },
+  "recommendations": "Detailed medical recommendations and next steps"
+}
+
+Extract all relevant medical information from the report and provide a thorough interpretation.`;
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64PDF}`
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0.3,
+      }),
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a moment.');
+      }
+      if (response.status === 402) {
+        throw new Error('AI service requires additional credits. Please contact support.');
+      }
       const errorText = await response.text();
-      throw new Error(`NephroScan API error: ${errorText}`);
+      console.error('Gemini API error:', errorText);
+      throw new Error(`AI analysis failed: ${response.status}`);
     }
 
     const result = await response.json();
+    const aiResponse = result.choices?.[0]?.message?.content;
     
-    return {
-      diagnosis: 'Pathology Report Analysis',
-      confidence: 0.80,
-      findings: {
-        primaryPathology: result.prediction || 'Analysis completed',
-        histologicalFeatures: 'Detailed analysis based on uploaded document',
-        immunohistochemistry: 'See full pathology report for details',
-        molecularMarkers: 'Refer to laboratory findings in original report',
-        stagingAndGrading: 'Clinical correlation recommended',
-        marginsAssessment: 'Review original pathology report',
-        laboratoryFindings: result.prediction,
-        prognosticFactors: 'Consult with treating physician',
-        treatmentResponse: 'Based on clinical evaluation',
-        additionalObservations: 'Complete medical history review recommended'
-      },
-      recommendations: 'Consult with your healthcare provider to discuss these pathology findings and develop an appropriate treatment plan. Follow-up appointments and additional testing may be recommended based on these results.'
-    };
+    if (!aiResponse) {
+      throw new Error('No response from AI model');
+    }
+
+    console.log('AI Response received, parsing...');
+    
+    // Extract JSON from the response
+    let analysisData;
+    try {
+      analysisData = JSON.parse(aiResponse);
+    } catch {
+      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       aiResponse.match(/```\s*([\s\S]*?)\s*```/) ||
+                       aiResponse.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        analysisData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      } else {
+        analysisData = {
+          diagnosis: 'Pathology Report Analysis',
+          confidence: 0.85,
+          findings: {
+            primaryPathology: aiResponse.substring(0, 500),
+            detailedAnalysis: aiResponse
+          },
+          recommendations: 'Please consult with your healthcare provider for a comprehensive evaluation.'
+        };
+      }
+    }
+
+    return analysisData;
 
   } catch (error) {
-    console.error('PDF analysis error:', error);
-    throw error;
+    console.error('Gemini PDF analysis error:', error);
+    throw new Error(`PDF analysis failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

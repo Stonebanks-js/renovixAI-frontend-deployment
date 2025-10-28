@@ -82,12 +82,12 @@ const AIScan = () => {
             <h1 className="heading-nephro mb-6">
               AI-Powered 
               <span className="bg-gradient-to-r from-primary via-foreground to-primary bg-clip-text text-transparent">
-                {" "}Kidney Scan Analysis
+                {" "}Medical Scan Analysis
               </span>
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-              Upload your kidney scan images and receive instant AI-powered diagnostic insights. 
-              Our advanced algorithms analyze medical imaging with 97.5% accuracy.
+              Upload your CT scans, MRI images, or pathology reports and receive personalized AI-powered health insights powered by Google Gemini. 
+              Get detailed analysis and recommendations in seconds.
             </p>
           </div>
         </div>
@@ -177,19 +177,19 @@ const AIScan = () => {
                     <ul className="space-y-2 text-sm text-muted-foreground">
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        High-quality kidney scan images (CT, MRI, Ultrasound)
+                        High-quality medical scan images (CT, MRI, Ultrasound, X-Ray)
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        PDF pathology reports from laboratories
+                        PDF pathology or laboratory reports
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        DICOM format preferred for medical images
+                        Supports JPG, PNG, DICOM, and PDF formats
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        Ensure patient information is de-identified
+                        Powered by Google Gemini AI for personalized analysis
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
@@ -198,15 +198,28 @@ const AIScan = () => {
                     </ul>
                   </div>
 
-                  <div className="bg-primary/10 backdrop-blur-sm rounded-lg p-4 border border-primary/20">
-                    <div className="flex items-start gap-3">
-                      <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-medium text-foreground mb-1">Privacy & Security</h4>
-                        <p className="text-sm text-muted-foreground">
-                          All uploaded images are processed securely and automatically deleted 
-                          after analysis. We maintain HIPAA compliance standards.
-                        </p>
+                  <div className="space-y-3">
+                    <div className="bg-primary/10 backdrop-blur-sm rounded-lg p-4 border border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-foreground mb-1">AI-Powered Analysis</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Uses Google Gemini 2.5 Pro for advanced medical image understanding and personalized health insights.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-primary/10 backdrop-blur-sm rounded-lg p-4 border border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-foreground mb-1">Privacy & Security</h4>
+                          <p className="text-sm text-muted-foreground">
+                            All data is encrypted and processed securely. Your medical information remains confidential.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -228,10 +241,10 @@ const AIScan = () => {
                   <div className="max-w-md mx-auto space-y-2">
                     <Progress value={analysisProgress} className="h-2" />
                     <p className="text-sm text-muted-foreground">
-                      {analysisProgress < 30 && "Processing image..."}
-                      {analysisProgress >= 30 && analysisProgress < 60 && "Extracting features..."}
-                      {analysisProgress >= 60 && analysisProgress < 90 && "Running AI analysis..."}
-                      {analysisProgress >= 90 && "Generating report..."}
+                      {analysisProgress < 30 && "📤 Uploading scan to secure server..."}
+                      {analysisProgress >= 30 && analysisProgress < 60 && "🔍 Analyzing with Gemini AI..."}
+                      {analysisProgress >= 60 && analysisProgress < 90 && "🧠 Generating personalized insights..."}
+                      {analysisProgress >= 90 && "✨ Finalizing your medical report..."}
                     </p>
                   </div>
                 </div>
