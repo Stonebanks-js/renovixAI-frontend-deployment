@@ -106,9 +106,18 @@ serve(async (req) => {
 
     let analysisResults;
 
-    // Convert blob to base64 for Gemini
+    // Convert blob to base64 for Gemini (chunk for large files to avoid stack overflow)
     const arrayBuffer = await imageBlob.arrayBuffer();
-    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 in chunks to handle large files
+    let binaryString = '';
+    const chunkSize = 8192; // Process 8KB at a time
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Data = btoa(binaryString);
     
     // Check if it's a PDF document
     if (imageData.mime_type === 'application/pdf') {
