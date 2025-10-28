@@ -83,6 +83,52 @@ serve(async (req) => {
       console.error('Failed to update session status:', updateError);
     }
 
+    // If client provided extracted PDF text, analyze directly without downloading file
+    if (requestBody.pdfText && imageData.mime_type === 'application/pdf') {
+      await supabase.from('scan_sessions').update({ progress: 60 }).eq('id', sessionId);
+      const analysisResults = await analyzePDFTextWithGemini(requestBody.pdfText);
+      await supabase.from('scan_sessions').update({ progress: 90 }).eq('id', sessionId);
+
+      // Store results in database
+      console.log('Storing analysis results in database...');
+      const { error: resultError } = await supabase
+        .from('scan_results')
+        .insert({
+          session_id: sessionId,
+          diagnosis: analysisResults.diagnosis,
+          confidence: analysisResults.confidence,
+          findings: analysisResults.findings,
+          recommendations: analysisResults.recommendations,
+        });
+
+      if (resultError) {
+        console.error('Result storage error:', resultError);
+        throw resultError;
+      }
+
+      console.log('Results stored successfully');
+
+      // Update session to completed
+      console.log('Updating session status to completed...');
+      const { error: completionError } = await supabase
+        .from('scan_sessions')
+        .update({ status: 'completed', progress: 100 })
+        .eq('id', sessionId);
+
+      if (completionError) {
+        console.error('Failed to update session to completed:', completionError);
+      }
+
+      console.log('=== Analysis completed successfully for session:', sessionId, '===');
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        results: analysisResults 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Update progress stages
     await supabase.from('scan_sessions').update({ progress: 20 }).eq('id', sessionId);
     console.log('Downloading scan from storage...');
@@ -326,6 +372,89 @@ Be thorough, specific, and medically accurate. If the image quality is poor or t
   } catch (error) {
     console.error('Gemini analysis error:', error);
     throw new Error(`AI analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function analyzePDFTextWithGemini(pdfText: string) {
+  try {
+    console.log('Calling Gemini AI for PDF TEXT analysis...');
+
+    const systemPrompt = `You are an expert medical pathologist specializing in interpreting pathology reports and laboratory results related to kidney and renal health.
+
+Your analysis should include:
+1. Key findings from the pathology report
+2. Clinical significance of the results
+3. Interpretation of laboratory values
+4. Prognostic factors
+5. Treatment implications
+6. Specific, actionable recommendations
+
+Provide a comprehensive yet understandable interpretation of the pathology report.
+Always recommend professional medical consultation for treatment planning.`;
+
+    const userPrompt = `Analyze the following medical pathology and/or blood test report text and provide a comprehensive interpretation in JSON with fields diagnosis (string), confidence (0-1), findings (object with concise sections), and recommendations (string).`;
+
+    // Truncate to avoid exceeding model limits
+    const MAX_CHARS = 20000;
+    const clipped = pdfText.length > MAX_CHARS ? pdfText.slice(0, MAX_CHARS) : pdfText;
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt + "\n\nReport Text:\n" + clipped }
+            ]
+          }
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) throw new Error('Rate limit exceeded. Please try again later.');
+      if (response.status === 402) throw new Error('AI service requires additional credits. Please contact support.');
+      const errorText = await response.text();
+      console.error('Gemini API error (text):', errorText);
+      throw new Error(`AI analysis failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    const aiResponse = result.choices?.[0]?.message?.content;
+    if (!aiResponse) throw new Error('No response from AI model');
+
+    // Try JSON parse with fallbacks like other analyzers
+    let analysisData;
+    try {
+      analysisData = JSON.parse(aiResponse);
+    } catch {
+      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) ||
+                       aiResponse.match(/```\s*([\s\S]*?)\s*```/) ||
+                       aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysisData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      } else {
+        analysisData = {
+          diagnosis: 'Pathology Report Analysis',
+          confidence: 0.85,
+          findings: { summary: aiResponse.substring(0, 500), detailedAnalysis: aiResponse },
+          recommendations: 'Please consult with your healthcare provider for a comprehensive evaluation.'
+        };
+      }
+    }
+
+    return analysisData;
+  } catch (error) {
+    console.error('Gemini PDF TEXT analysis error:', error);
+    throw new Error(`PDF text analysis failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

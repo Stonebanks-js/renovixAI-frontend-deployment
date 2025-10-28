@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getDocument } from 'pdfjs-dist';
 
 interface ScanResults {
   diagnosis: string;
@@ -17,6 +18,21 @@ interface ScanSession {
   updated_at?: string;
   user_id?: string;
 }
+
+const extractPdfText = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const loadingTask = getDocument({ data: buffer, disableWorker: true } as any);
+  const pdf = await (loadingTask as any).promise;
+  let fullText = '';
+  const maxPages = Math.min(pdf.numPages || 0, 20);
+  for (let i = 1; i <= maxPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = (content.items as any[]).map((it: any) => (it.str ? it.str : '')).join(' ');
+    fullText += `\n\nPage ${i}:\n${strings}`;
+  }
+  return fullText.trim();
+};
 
 export const useScanAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -117,11 +133,25 @@ export const useScanAnalysis = () => {
       console.log('Image metadata stored successfully');
       setAnalysisProgress(20);
 
-      // Step 4: Start analysis via edge function
-      console.log('Step 4: Starting AI analysis...');
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-scan', {
-        body: { sessionId: session.id }
-      });
+// Step 3.5: If PDF, extract text client-side for better AI analysis
+let extractedPdfText: string | undefined;
+if (isValidDoc) {
+  console.log('Extracting text from PDF for AI analysis...');
+  setAnalysisProgress(25);
+  try {
+    extractedPdfText = await extractPdfText(file);
+    console.log('PDF text extracted, length:', extractedPdfText.length);
+    setAnalysisProgress(30);
+  } catch (e) {
+    console.error('PDF text extraction failed:', e);
+  }
+}
+
+// Step 4: Start analysis via edge function
+console.log('Step 4: Starting AI analysis...');
+const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-scan', {
+  body: { sessionId: session.id, ...(extractedPdfText ? { pdfText: extractedPdfText } : {}) }
+});
 
       if (analysisError) {
         console.error('Analysis invocation error:', analysisError);
