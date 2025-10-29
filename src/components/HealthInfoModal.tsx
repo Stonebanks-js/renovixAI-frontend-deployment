@@ -59,8 +59,11 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
     e.preventDefault();
     
     if (!user) {
-      // Redirect to auth page if not logged in
-      navigate('/auth');
+      toast({
+        title: "Authentication required",
+        description: "Please sign in first to save your information.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -77,6 +80,8 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
           date_of_birth: formData.dateOfBirth,
           phone: formData.phone || null,
           emergency_contact: formData.emergencyContact || null,
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) {
@@ -86,12 +91,9 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
           variant: "destructive",
         });
       } else {
-        // Also store in localStorage as backup
-        localStorage.setItem('healthInfo', JSON.stringify(formData));
-        
         toast({
           title: "Health information saved!",
-          description: "Thank you for providing your health information. You can now use all features.",
+          description: "Your information has been saved successfully.",
         });
         
         onClose();
@@ -241,34 +243,16 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
             </p>
           </div>
 
-          {/* Login/Submit Buttons */}
-          {!user ? (
-            <div className="space-y-3">
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="lg" 
-                className="w-full"
-                onClick={handleLoginRedirect}
-              >
-                <LogIn className="h-4 w-4 mr-2" />
-                Sign In to Save Information
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                You need to sign in to save your health information securely
-              </p>
-            </div>
-          ) : (
-            <Button 
-              type="submit" 
-              variant="hero" 
-              size="lg" 
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save & Continue to NephroScan AI'}
-            </Button>
-          )}
+          {/* Submit Button */}
+          <Button 
+            type="submit" 
+            variant="hero" 
+            size="lg" 
+            className="w-full"
+            disabled={loading || !user}
+          >
+            {loading ? 'Saving...' : 'Submit Information'}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
