@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getDocument } from 'pdfjs-dist';
+import Tesseract from 'tesseract.js';
 
 interface ScanResults {
   diagnosis: string;
@@ -32,6 +33,39 @@ const extractPdfText = async (file: File): Promise<string> => {
     fullText += `\n\nPage ${i}:\n${strings}`;
   }
   return fullText.trim();
+};
+
+// OCR fallback for scanned PDFs using Tesseract.js (first 3 pages)
+const ocrPdfToText = async (file: File, maxPages = 3): Promise<string> => {
+  try {
+    const buffer = await file.arrayBuffer();
+    const loadingTask = getDocument({ data: buffer, disableWorker: true } as any);
+    const pdf = await (loadingTask as any).promise;
+    let ocrText = '';
+    const pages = Math.min(pdf.numPages || 0, maxPages);
+
+    for (let i = 1; i <= pages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(viewport.width, viewport.height)
+        : (() => {
+            const c = document.createElement('canvas');
+            c.width = viewport.width;
+            c.height = viewport.height;
+            return c;
+          })();
+      const ctx = (canvas as any).getContext('2d');
+      await page.render({ canvasContext: ctx, viewport } as any).promise;
+      const dataUrl = (canvas as any).toDataURL('image/png');
+      const { data } = await Tesseract.recognize(dataUrl, 'eng');
+      if (data?.text) ocrText += `\n\nPage ${i} OCR:\n${data.text}`;
+    }
+    return ocrText.trim();
+  } catch (e) {
+    console.error('OCR extraction failed:', e);
+    return '';
+  }
 };
 
 export const useScanAnalysis = () => {
@@ -133,17 +167,34 @@ export const useScanAnalysis = () => {
       console.log('Image metadata stored successfully');
       setAnalysisProgress(20);
 
-// Step 3.5: If PDF, extract text client-side for better AI analysis
+// Step 3.5: If PDF, extract text client-side for better AI analysis (with OCR fallback)
 let extractedPdfText: string | undefined;
 if (isValidDoc) {
   console.log('Extracting text from PDF for AI analysis...');
   setAnalysisProgress(25);
   try {
-    extractedPdfText = await extractPdfText(file);
-    console.log('PDF text extracted, length:', extractedPdfText.length);
-    setAnalysisProgress(30);
+    const rawText = await extractPdfText(file);
+    let finalText = rawText;
+
+    if (!finalText || finalText.trim().length < 50) {
+      console.warn('PDF appears to be scanned or has minimal text. Running OCR fallback...');
+      setAnalysisProgress(28);
+      const ocrText = await ocrPdfToText(file);
+      if (ocrText && ocrText.trim().length > 0) {
+        finalText = (finalText ? finalText + '\n\n' : '') + ocrText;
+      }
+    }
+
+    if (finalText && finalText.trim().length > 0) {
+      extractedPdfText = finalText;
+      console.log('PDF text prepared, length:', extractedPdfText.length);
+      setAnalysisProgress(30);
+    } else {
+      throw new Error('pdf_text_unreadable');
+    }
   } catch (e) {
-    console.error('PDF text extraction failed:', e);
+    console.error('PDF text extraction failed (including OCR):', e);
+    throw e instanceof Error ? e : new Error('pdf_text_unreadable');
   }
 }
 
@@ -223,11 +274,17 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
         } else if (error.message.includes('metadata_failed')) {
           errorTitle = "Metadata Error";
           errorMessage = "Failed to store file information. Please try again.";
+        } else if (error.message.includes('pdf_text_unreadable')) {
+          errorTitle = "Unreadable PDF";
+          errorMessage = "Your PDF is scanned or image-only. Please upload a text-based PDF or a clear image/photo of the report.";
+        } else if (error.message.includes('pdf_text_missing')) {
+          errorTitle = "PDF Text Missing";
+          errorMessage = "We couldn't extract text from the PDF. Try another file or upload as image (JPG/PNG).";
         } else if (error.message.includes('analysis_start_failed')) {
           errorTitle = "Analysis Error";
           errorMessage = "Unable to start AI analysis. The service may be temporarily unavailable.";
         } else {
-          errorMessage = error.message || errorMessage;
+          errorMessage = (error as any)?.message || errorMessage;
         }
       }
       

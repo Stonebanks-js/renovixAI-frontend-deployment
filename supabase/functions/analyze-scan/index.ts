@@ -84,7 +84,8 @@ serve(async (req) => {
     }
 
     // If client provided extracted PDF text, analyze directly without downloading file
-    if (requestBody.pdfText && imageData.mime_type === 'application/pdf') {
+    if (typeof requestBody.pdfText === 'string' && imageData.mime_type === 'application/pdf') {
+      console.log('Received pdfText for PDF, length:', requestBody.pdfText.length);
       await supabase.from('scan_sessions').update({ progress: 60 }).eq('id', sessionId);
       const analysisResults = await analyzePDFTextWithGemini(requestBody.pdfText);
       await supabase.from('scan_sessions').update({ progress: 90 }).eq('id', sessionId);
@@ -167,9 +168,10 @@ serve(async (req) => {
     
     // Check if it's a PDF document
     if (imageData.mime_type === 'application/pdf') {
-      console.log('Analyzing PDF pathology report with Gemini AI...');
-      await supabase.from('scan_sessions').update({ progress: 60 }).eq('id', sessionId);
-      analysisResults = await analyzePDFWithGemini(base64Data);
+      console.warn('PDF uploaded without extracted text. Aborting image-based analysis.');
+      // Mark session failed with clear message and return 400
+      await supabase.from('scan_sessions').update({ status: 'failed', progress: 0 }).eq('id', sessionId);
+      return new Response(JSON.stringify({ error: 'pdf_text_missing', message: 'No text could be extracted from the uploaded PDF. Please upload a text-based (non-scanned) PDF or a clear image of the report.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } else {
       console.log('Analyzing medical scan image with Gemini AI...');
       await supabase.from('scan_sessions').update({ progress: 60 }).eq('id', sessionId);
