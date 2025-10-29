@@ -1,8 +1,11 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getDocument } from 'pdfjs-dist';
+import * as pdfjs from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
+
+// Configure pdf.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface ScanResults {
   diagnosis: string;
@@ -22,8 +25,8 @@ interface ScanSession {
 
 const extractPdfText = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
-  const loadingTask = getDocument({ data: buffer, disableWorker: true } as any);
-  const pdf = await (loadingTask as any).promise;
+  const loadingTask = pdfjs.getDocument({ data: buffer });
+  const pdf = await loadingTask.promise;
   let fullText = '';
   const maxPages = Math.min(pdf.numPages || 0, 20);
   for (let i = 1; i <= maxPages; i++) {
@@ -39,8 +42,8 @@ const extractPdfText = async (file: File): Promise<string> => {
 const ocrPdfToText = async (file: File, maxPages = 3): Promise<string> => {
   try {
     const buffer = await file.arrayBuffer();
-    const loadingTask = getDocument({ data: buffer, disableWorker: true } as any);
-    const pdf = await (loadingTask as any).promise;
+    const loadingTask = pdfjs.getDocument({ data: buffer });
+    const pdf = await loadingTask.promise;
     let ocrText = '';
     const pages = Math.min(pdf.numPages || 0, maxPages);
 

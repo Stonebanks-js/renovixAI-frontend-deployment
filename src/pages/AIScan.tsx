@@ -8,6 +8,7 @@ import { Upload, FileImage, Brain, CheckCircle, Loader2, Sparkles, Shield } from
 import { useToast } from '@/hooks/use-toast';
 import { useScanAnalysis } from '@/hooks/useScanAnalysis';
 import ScanReport from '@/components/ScanReport';
+import { ScanChatInterface } from '@/components/ScanChatInterface';
 
 const AIScan = () => {
   const { toast } = useToast();
@@ -19,9 +20,11 @@ const AIScan = () => {
     isAnalyzing,
     analysisProgress,
     analysisResults,
+    currentSession,
     uploadImageAndAnalyze,
     resetAnalysis
   } = useScanAnalysis();
+  const [extractedText, setExtractedText] = useState<string>('');
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -50,6 +53,22 @@ const AIScan = () => {
     if (!selectedFile) return;
     
     try {
+      // Extract text if PDF for chat context
+      if (selectedFile.type === 'application/pdf') {
+        const pdfjs = await import('pdfjs-dist');
+        const buffer = await selectedFile.arrayBuffer();
+        const loadingTask = pdfjs.getDocument({ data: buffer });
+        const pdf = await loadingTask.promise;
+        let text = '';
+        const maxPages = Math.min(pdf.numPages, 20);
+        for (let i = 1; i <= maxPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map((item: any) => item.str || '').join(' ');
+          text += `\n\n${strings}`;
+        }
+        setExtractedText(text.trim());
+      }
       await uploadImageAndAnalyze(selectedFile);
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -59,6 +78,7 @@ const AIScan = () => {
   const handleReset = () => {
     setSelectedFile(null);
     setPreviewUrl('');
+    setExtractedText('');
     resetAnalysis();
   };
 
@@ -253,7 +273,20 @@ const AIScan = () => {
 
             {/* Analysis Results */}
             {analysisResults && (
-              <ScanReport results={analysisResults} onReset={handleReset} />
+              <>
+                <ScanReport results={analysisResults} onReset={handleReset} />
+                
+                {/* Chat Interface */}
+                {currentSession && (
+                  <div className="mt-8">
+                    <ScanChatInterface
+                      sessionId={currentSession.id}
+                      pdfText={extractedText}
+                      diagnosis={analysisResults.diagnosis}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

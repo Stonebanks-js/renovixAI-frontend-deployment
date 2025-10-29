@@ -2,3 +2,6 @@ project_id = "oaqukfylwosrslltqtws"
 
 [functions.analyze-scan]
 verify_jwt = false
+
+[functions.scan-chat]
+verify_jwt = false
