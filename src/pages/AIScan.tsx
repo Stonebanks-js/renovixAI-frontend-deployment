@@ -22,9 +22,10 @@ const AIScan = () => {
     analysisResults,
     currentSession,
     uploadImageAndAnalyze,
-    resetAnalysis
+    resetAnalysis,
+    lastExtractedPdfText,
   } = useScanAnalysis();
-  const [extractedText, setExtractedText] = useState<string>('');
+  
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,24 +52,7 @@ const AIScan = () => {
 
   const handleAnalyze = async () => {
     if (!selectedFile) return;
-    
     try {
-      // Extract text if PDF for chat context
-      if (selectedFile.type === 'application/pdf') {
-        const pdfjs = await import('pdfjs-dist');
-        const buffer = await selectedFile.arrayBuffer();
-        const loadingTask = pdfjs.getDocument({ data: buffer });
-        const pdf = await loadingTask.promise;
-        let text = '';
-        const maxPages = Math.min(pdf.numPages, 20);
-        for (let i = 1; i <= maxPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const strings = content.items.map((item: any) => item.str || '').join(' ');
-          text += `\n\n${strings}`;
-        }
-        setExtractedText(text.trim());
-      }
       await uploadImageAndAnalyze(selectedFile);
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -78,7 +62,6 @@ const AIScan = () => {
   const handleReset = () => {
     setSelectedFile(null);
     setPreviewUrl('');
-    setExtractedText('');
     resetAnalysis();
   };
 
@@ -281,7 +264,7 @@ const AIScan = () => {
                   <div className="mt-8">
                     <ScanChatInterface
                       sessionId={currentSession.id}
-                      pdfText={extractedText}
+                      pdfText={lastExtractedPdfText}
                       diagnosis={analysisResults.diagnosis}
                     />
                   </div>

@@ -77,6 +77,7 @@ export const useScanAnalysis = () => {
   const [analysisResults, setAnalysisResults] = useState<ScanResults | null>(null);
   const [currentSession, setCurrentSession] = useState<ScanSession | null>(null);
   const { toast } = useToast();
+  const [lastExtractedPdfText, setLastExtractedPdfText] = useState<string>('');
 
   const uploadImageAndAnalyze = useCallback(async (file: File) => {
     try {
@@ -102,11 +103,20 @@ export const useScanAnalysis = () => {
 
       console.log('Starting upload and analysis for file:', file.name, 'Type:', file.type, 'Size:', file.size);
 
-      // Get current user (optional - can be null for anonymous uploads)
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id || null;
       
-      console.log('Upload initiated by:', userId ? `user ${userId}` : 'anonymous user');
+      if (!userId) {
+        setIsAnalyzing(false);
+        toast({
+          title: "Sign in required",
+          description: "Please sign in before uploading and analyzing a report.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('Upload initiated by:', `user ${userId}`);
 
       // Step 1: Create scan session
       console.log('Step 1: Creating scan session...');
@@ -190,6 +200,7 @@ if (isValidDoc) {
 
     if (finalText && finalText.trim().length > 0) {
       extractedPdfText = finalText;
+      setLastExtractedPdfText(finalText);
       console.log('PDF text prepared, length:', extractedPdfText.length);
       setAnalysisProgress(30);
     } else {
@@ -342,6 +353,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
     setAnalysisProgress(0);
     setAnalysisResults(null);
     setCurrentSession(null);
+    setLastExtractedPdfText('');
   }, []);
 
   return {
@@ -349,6 +361,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
     analysisProgress,
     analysisResults,
     currentSession,
+    lastExtractedPdfText,
     uploadImageAndAnalyze,
     resetAnalysis
   };
