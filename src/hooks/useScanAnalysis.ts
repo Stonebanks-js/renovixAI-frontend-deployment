@@ -4,8 +4,11 @@ import { useToast } from '@/hooks/use-toast';
 import * as pdfjs from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
-// Configure pdf.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure pdf.js worker using local package (Vite-compatible)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url
+).toString();
 
 interface ScanResults {
   diagnosis: string;
