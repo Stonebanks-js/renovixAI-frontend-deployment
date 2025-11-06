@@ -26,6 +26,18 @@ interface ScanSession {
   user_id?: string;
 }
 
+interface AnalysisDebug {
+  steps: string[];
+  pdfTextLength?: number;
+  ocrUsed?: boolean;
+  ocrPages?: number;
+  aiMode?: 'pdfText' | 'image';
+  aiModel?: string;
+  sessionId?: string;
+  storagePath?: string;
+  error?: string;
+}
+
 const extractPdfText = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
   const loadingTask = pdfjs.getDocument({ data: buffer });
@@ -81,12 +93,15 @@ export const useScanAnalysis = () => {
   const [currentSession, setCurrentSession] = useState<ScanSession | null>(null);
   const { toast } = useToast();
   const [lastExtractedPdfText, setLastExtractedPdfText] = useState<string>('');
+  const [analysisDebug, setAnalysisDebug] = useState<AnalysisDebug>({ steps: [] });
+  const addStep = (s: string) => setAnalysisDebug((prev) => ({ ...prev, steps: [...prev.steps, s] }));
 
   const uploadImageAndAnalyze = useCallback(async (file: File) => {
     try {
       setIsAnalyzing(true);
       setAnalysisProgress(0);
       setAnalysisResults(null);
+      setAnalysisDebug({ steps: ['Start analysis'] });
 
       // Validation: File size check (10MB limit)
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -120,6 +135,7 @@ export const useScanAnalysis = () => {
       }
       
       console.log('Upload initiated by:', `user ${userId}`);
+      addStep('User verified');
 
       // Step 1: Create scan session
       console.log('Step 1: Creating scan session...');
@@ -141,6 +157,8 @@ export const useScanAnalysis = () => {
 
       console.log('Session created successfully:', session.id);
       setCurrentSession(session as ScanSession);
+      setAnalysisDebug((prev) => ({ ...prev, sessionId: session.id }));
+      addStep('Session created');
       setAnalysisProgress(10);
 
       // Step 2: Upload image to storage
@@ -161,6 +179,8 @@ export const useScanAnalysis = () => {
       }
 
       console.log('File uploaded successfully:', uploadData.path);
+      setAnalysisDebug((prev) => ({ ...prev, storagePath: fileName }));
+      addStep('File uploaded');
       setAnalysisProgress(15);
 
       // Step 3: Store image metadata
@@ -197,6 +217,8 @@ if (isValidDoc) {
       setAnalysisProgress(28);
       const ocrText = await ocrPdfToText(file);
       if (ocrText && ocrText.trim().length > 0) {
+        addStep('OCR fallback used');
+        setAnalysisDebug((prev) => ({ ...prev, ocrUsed: true, ocrPages: 3 }));
         finalText = (finalText ? finalText + '\n\n' : '') + ocrText;
       }
     }
@@ -205,6 +227,7 @@ if (isValidDoc) {
       extractedPdfText = finalText;
       setLastExtractedPdfText(finalText);
       console.log('PDF text prepared, length:', extractedPdfText.length);
+      setAnalysisDebug((prev) => ({ ...prev, pdfTextLength: extractedPdfText.length, aiMode: 'pdfText', aiModel: 'google/gemini-2.5-pro' }));
       setAnalysisProgress(30);
     } else {
       throw new Error('pdf_text_unreadable');
@@ -217,6 +240,7 @@ if (isValidDoc) {
 
 // Step 4: Start analysis via edge function
 console.log('Step 4: Starting AI analysis...');
+addStep('Invoking edge function: analyze-scan');
 const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-scan', {
   body: { sessionId: session.id, ...(extractedPdfText ? { pdfText: extractedPdfText } : {}) }
 });
@@ -227,6 +251,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
       }
 
       console.log('Analysis started successfully:', analysisData);
+      addStep('Edge function accepted request');
 
       // Set up real-time subscription to track progress
       const channel = supabase
@@ -245,9 +270,12 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
             setAnalysisProgress(updatedSession.progress);
             
             if (updatedSession.status === 'completed') {
+              addStep('Session completed - fetching results');
               fetchResults(session.id);
             } else if (updatedSession.status === 'failed') {
               setIsAnalyzing(false);
+              setAnalysisDebug((prev) => ({ ...prev, error: 'Session marked as failed by backend' }));
+              addStep('Session failed');
               toast({
                 title: "Analysis Failed",
                 description: "The AI analysis encountered an error. Please try again with a different image.",
@@ -365,6 +393,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
     analysisResults,
     currentSession,
     lastExtractedPdfText,
+    analysisDebug,
     uploadImageAndAnalyze,
     resetAnalysis
   };
