@@ -85,9 +85,28 @@ const sendMessage = async (override?: string) => {
       });
 
       if (!resp.ok || !resp.body) {
-        const errMsg = await resp.text();
+        const contentType = resp.headers.get('content-type') || '';
+        let errMsg = '';
+        if (contentType.includes('application/json')) {
+          try {
+            const j = await resp.json();
+            errMsg = j?.error || JSON.stringify(j);
+          } catch {
+            errMsg = await resp.text();
+          }
+        } else {
+          errMsg = await resp.text();
+        }
+
         setLastError(errMsg || 'Failed to start stream');
-        toast({ title: 'Chat Error', description: 'Unable to start AI stream.', variant: 'destructive' });
+
+        const desc = resp.status === 429
+          ? 'Rate limit exceeded. Please wait a bit and try again.'
+          : resp.status === 402
+          ? 'AI credits exhausted. Please add credits to your Lovable workspace.'
+          : 'Unable to start AI stream.';
+
+        toast({ title: 'Chat Error', description: desc, variant: 'destructive' });
         setIsLoading(false);
         return;
       }

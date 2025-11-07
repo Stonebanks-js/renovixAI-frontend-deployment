@@ -13,6 +13,13 @@ serve(async (req) => {
 
   try {
     const { sessionId, message, pdfText, diagnosis, history } = await req.json();
+    console.log("scan-chat-stream start", {
+      sessionId,
+      hasPdfText: !!pdfText,
+      diagnosisLen: diagnosis?.length || 0,
+      historyCount: Array.isArray(history) ? history.length : 0,
+      messageLen: message?.length || 0
+    });
 
     if (!sessionId || !message) {
       return new Response(
@@ -84,6 +91,7 @@ serve(async (req) => {
     }
 
     // Return the SSE stream directly
+    console.log("scan-chat-stream: streaming start");
     return new Response(resp.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });

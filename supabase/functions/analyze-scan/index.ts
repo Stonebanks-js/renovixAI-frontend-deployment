@@ -118,6 +118,8 @@ serve(async (req) => {
 
       if (completionError) {
         console.error('Failed to update session to completed:', completionError);
+      } else {
+        console.log('DB updated to completed for session:', sessionId);
       }
 
       console.log('=== Analysis completed successfully for session:', sessionId, '===');
@@ -209,6 +211,8 @@ serve(async (req) => {
     
     if (completionError) {
       console.error('Failed to update session to completed:', completionError);
+    } else {
+      console.log('DB updated to completed for session:', sessionId);
     }
 
     console.log('=== Analysis completed successfully for session:', sessionId, '===');

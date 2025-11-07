@@ -272,10 +272,13 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
             if (updatedSession.status === 'completed') {
               addStep('Session completed - fetching results');
               fetchResults(session.id);
+              // Cleanup RT channel on completion
+              supabase.removeChannel(channel);
             } else if (updatedSession.status === 'failed') {
               setIsAnalyzing(false);
               setAnalysisDebug((prev) => ({ ...prev, error: 'Session marked as failed by backend' }));
               addStep('Session failed');
+              supabase.removeChannel(channel);
               toast({
                 title: "Analysis Failed",
                 description: "The AI analysis encountered an error. Please try again with a different image.",
@@ -286,10 +289,57 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
         )
         .subscribe();
 
-      // Clean up subscription after analysis
+      // Polling fallback (in case realtime is not configured)
+      let cancelled = false;
+      const pollSession = async () => {
+        let attempt = 0;
+        let delay = 800; // ms
+        while (!cancelled && attempt < 12) { // ~ up to ~1 min total
+          attempt++;
+          try {
+            const { data: row, error } = await supabase
+              .from('scan_sessions')
+              .select('status, progress')
+              .eq('id', session.id)
+              .single();
+
+            if (!error && row) {
+              if (typeof row.progress === 'number') setAnalysisProgress(row.progress);
+              if (row.status === 'completed') {
+                addStep('Polling detected completion - fetching results');
+                fetchResults(session.id);
+                break;
+              }
+              if (row.status === 'failed') {
+                setIsAnalyzing(false);
+                addStep('Polling detected failure');
+                toast({
+                  title: 'Analysis Failed',
+                  description: 'The AI analysis encountered an error. Please try again.',
+                  variant: 'destructive',
+                });
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn('Polling error:', e);
+          }
+          await new Promise((r) => setTimeout(r, delay));
+          delay = Math.min(5000, Math.floor(delay * 1.6));
+        }
+        if (!cancelled && analysisProgress < 100) {
+          console.warn('Analysis timeout reached without completion');
+          addStep('Analysis timeout - no completion event');
+        }
+      };
+      pollSession();
+
+      // Clean up subscription after analysis or timeout safeguard
       setTimeout(() => {
+        cancelled = true;
         supabase.removeChannel(channel);
       }, 300000); // 5 minutes timeout
+
 
     } catch (error) {
       console.error('Error during scan analysis:', error);
@@ -343,53 +393,54 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
 
   const fetchResults = useCallback(async (sessionId: string) => {
     try {
-      const { data: results, error } = await supabase
-        .from('scan_results')
-        .select('*')
-        .eq('session_id', sessionId)
-        .single();
+      // Exponential backoff to avoid race condition with DB insert/commit
+      const maxAttempts = 6; // ~ up to ~7s total
+      let attempt = 0;
+      let delay = 300; // ms
+      let resultsRow: any | null = null;
 
-      if (error || !results) {
-        // Brief retry to avoid race condition with DB insert
-        await new Promise((r) => setTimeout(r, 500));
-        const { data: resultsRetry, error: errorRetry } = await supabase
+      while (attempt < maxAttempts && !resultsRow) {
+        attempt++;
+        const { data, error } = await supabase
           .from('scan_results')
           .select('*')
           .eq('session_id', sessionId)
           .single();
-        if (errorRetry || !resultsRetry) {
-          throw new Error('Failed to fetch results');
+
+        if (!error && data) {
+          resultsRow = data;
+          break;
         }
-        setAnalysisResults({
-          diagnosis: resultsRetry.diagnosis,
-          confidence: resultsRetry.confidence,
-          findings: resultsRetry.findings as Record<string, any>,
-          recommendations: resultsRetry.recommendations
-        });
-      } else {
-        setAnalysisResults({
-          diagnosis: results.diagnosis,
-          confidence: results.confidence,
-          findings: results.findings as Record<string, any>,
-          recommendations: results.recommendations
-        });
+        await new Promise((r) => setTimeout(r, delay));
+        delay = Math.min(2000, Math.floor(delay * 2));
       }
+
+      if (!resultsRow) {
+        throw new Error('Failed to fetch results');
+      }
+
+      setAnalysisResults({
+        diagnosis: resultsRow.diagnosis,
+        confidence: resultsRow.confidence,
+        findings: resultsRow.findings as Record<string, any>,
+        recommendations: resultsRow.recommendations,
+      });
 
       setIsAnalyzing(false);
       setAnalysisProgress(100);
+      addStep('Client acknowledged completion');
 
       toast({
-        title: "Analysis Complete",
-        description: "Your scan has been successfully analyzed.",
+        title: 'Analysis Complete',
+        description: 'Your scan has been successfully analyzed.',
       });
-
     } catch (error) {
       console.error('Error fetching results:', error);
       setIsAnalyzing(false);
       toast({
-        title: "Error",
-        description: "Failed to retrieve analysis results.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to retrieve analysis results.',
+        variant: 'destructive',
       });
     }
   }, [toast]);
