@@ -14,6 +14,8 @@ interface Message {
   timestamp: Date;
 }
 
+const CHAT_STREAM_URL = 'https://oaqukfylwosrslltqtws.functions.supabase.co/functions/v1/scan-chat-stream';
+
 interface ScanChatInterfaceProps {
   sessionId: string;
   pdfText?: string;
@@ -24,6 +26,8 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastPrompt, setLastPrompt] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -33,46 +37,114 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     }
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+const sendMessage = async (override?: string) => {
+    const text = (override ?? inputValue).trim();
+    if (!text || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputValue,
+      content: text,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
+    setLastPrompt(text);
+    setLastError(null);
     setInputValue('');
     setIsLoading(true);
 
+    let assistantSoFar = '';
+    const upsertAssistant = (delta: string) => {
+      assistantSoFar += delta;
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant') {
+          const updated = prev.slice();
+          updated[updated.length - 1] = { ...last, content: assistantSoFar } as Message;
+          return updated;
+        }
+        return [
+          ...prev,
+          { id: (Date.now() + 1).toString(), role: 'assistant', content: assistantSoFar, timestamp: new Date() }
+        ];
+      });
+    };
+
     try {
-      const { data, error } = await supabase.functions.invoke('scan-chat', {
-        body: {
+      const resp = await fetch(CHAT_STREAM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           sessionId,
-          message: inputValue,
+          message: text,
           pdfText,
           diagnosis,
-          history: messages.map(m => ({ role: m.role, content: m.content })),
-        },
+          history: messages.map(m => ({ role: m.role, content: m.content }))
+        })
       });
 
-      if (error) throw error;
+      if (!resp.ok || !resp.body) {
+        const errMsg = await resp.text();
+        setLastError(errMsg || 'Failed to start stream');
+        toast({ title: 'Chat Error', description: 'Unable to start AI stream.', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-      };
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let done = false;
 
-      setMessages(prev => [...prev, assistantMessage]);
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        if (readerDone) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let nlIdx: number;
+        while ((nlIdx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, nlIdx);
+          buffer = buffer.slice(nlIdx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line || line.startsWith(':')) continue;
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') { done = true; break; }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) upsertAssistant(delta);
+          } catch {
+            // partial JSON, put back and wait for more
+            buffer = line + '\n' + buffer;
+            break;
+          }
+        }
+      }
+
+      // Final flush for remaining lines without trailing newline
+      if (buffer.trim()) {
+        for (let raw of buffer.split('\n')) {
+          if (!raw) continue;
+          if (raw.endsWith('\r')) raw = raw.slice(0, -1);
+          if (!raw.startsWith('data: ')) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) upsertAssistant(delta);
+          } catch { /* ignore */ }
+        }
+      }
+
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error('Chat stream error:', error);
+      setLastError(error instanceof Error ? error.message : 'Unknown error');
       toast({
         title: 'Chat Error',
-        description: 'Failed to get response. Please try again.',
+        description: 'Failed during AI streaming. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -176,6 +248,16 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
           )}
         </ScrollArea>
 
+        {lastError && !isLoading && (
+          <div className="text-sm text-destructive mb-2">
+            Chat failed: {typeof lastError === 'string' ? lastError : 'Unknown error'}
+            {lastPrompt && (
+              <Button variant="outline" size="sm" className="ml-2" onClick={() => sendMessage(lastPrompt!)}>
+                Retry
+              </Button>
+            )}
+          </div>
+        )}
         <div className="flex gap-2">
           <Input
             value={inputValue}
@@ -186,7 +268,7 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
             className="flex-1"
           />
           <Button
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={isLoading || !inputValue.trim()}
             size="icon"
             variant="nephro"

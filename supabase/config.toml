@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.scan-chat]
 verify_jwt = false
+
+[functions.scan-chat-stream]
+verify_jwt = false

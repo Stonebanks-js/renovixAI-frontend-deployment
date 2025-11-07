@@ -349,16 +349,31 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
         .eq('session_id', sessionId)
         .single();
 
-      if (error) {
-        throw new Error('Failed to fetch results');
-      }
-
+      if (error || !results) {
+        // Brief retry to avoid race condition with DB insert
+        await new Promise((r) => setTimeout(r, 500));
+        const { data: resultsRetry, error: errorRetry } = await supabase
+          .from('scan_results')
+          .select('*')
+          .eq('session_id', sessionId)
+          .single();
+        if (errorRetry || !resultsRetry) {
+          throw new Error('Failed to fetch results');
+        }
+        setAnalysisResults({
+          diagnosis: resultsRetry.diagnosis,
+          confidence: resultsRetry.confidence,
+          findings: resultsRetry.findings as Record<string, any>,
+          recommendations: resultsRetry.recommendations
+        });
+      } else {
         setAnalysisResults({
           diagnosis: results.diagnosis,
           confidence: results.confidence,
           findings: results.findings as Record<string, any>,
           recommendations: results.recommendations
         });
+      }
 
       setIsAnalyzing(false);
       setAnalysisProgress(100);
