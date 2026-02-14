@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import * as pdfjs from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
+import { generateReportId, generateReferralId, extractPatientName } from '@/lib/sanitizeText';
 
 // Configure pdf.js worker using local package (Vite-compatible)
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -419,12 +420,31 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
         throw new Error('Failed to fetch results');
       }
 
-      setAnalysisResults({
+      const analysisData = {
         diagnosis: resultsRow.diagnosis,
         confidence: resultsRow.confidence,
         findings: resultsRow.findings as Record<string, any>,
         recommendations: resultsRow.recommendations,
-      });
+      };
+      setAnalysisResults(analysisData);
+
+      // Auto-save to health_reports for dashboard sync
+      try {
+        const patientName = extractPatientName(lastExtractedPdfText) || null;
+        const reportData = {
+          ...analysisData,
+          report_id: generateReportId(),
+          referral_id: generateReferralId(),
+          patient_name: patientName,
+          uploaded_at: new Date().toISOString(),
+        };
+        await supabase.from('health_reports').insert({
+          session_id: sessionId,
+          report_data: reportData as any,
+        });
+      } catch (e) {
+        console.warn('Failed to save health report:', e);
+      }
 
       setIsAnalyzing(false);
       setAnalysisProgress(100);
@@ -443,7 +463,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
         variant: 'destructive',
       });
     }
-  }, [toast]);
+  }, [toast, lastExtractedPdfText]);
 
   const resetAnalysis = useCallback(() => {
     setIsAnalyzing(false);
