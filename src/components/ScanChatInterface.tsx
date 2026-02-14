@@ -205,9 +205,22 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     return () => window.speechSynthesis.removeEventListener('voiceschanged', handleVoices);
   }, []);
 
+  const isUserNearBottom = useRef(true);
+
+  // Track if user scrolled up
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const el = scrollRef.current;
+    const threshold = 80;
+    isUserNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
+
+  // Auto-scroll to bottom when new messages arrive (unless user scrolled up)
   useEffect(() => {
-    if (messages.length > 0 && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messages.length > 0 && scrollRef.current && isUserNearBottom.current) {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      });
     }
   }, [messages]);
 
@@ -505,14 +518,14 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
   };
 
   return (
-    <Card className="card-nephro p-6 animate-fade-in-up">
+    <Card className="card-nephro p-6 lg:p-8 animate-fade-in-up max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-4">
         <MessageCircle className="w-6 h-6 text-primary" />
         <h3 className="text-xl font-semibold text-foreground">Ask Questions About Your Report</h3>
       </div>
 
       <div className="space-y-4">
-        <ScrollArea ref={scrollRef} className="h-[400px] pr-4">
+        <ScrollArea ref={scrollRef} className="h-[550px] pr-4" onScrollCapture={handleScroll}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
               <Bot className="w-12 h-12 text-primary/50" />
