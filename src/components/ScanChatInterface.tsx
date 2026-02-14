@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Send, MessageCircle, Bot, User, Pill, Leaf, Languages, Volume2, VolumeX, Pause, Play } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Loader2, Send, MessageCircle, Bot, User, Pill, Leaf, Languages, Volume2, VolumeX, Pause, Play, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,14 +30,103 @@ interface ScanChatInterfaceProps {
   diagnosis?: string;
 }
 
+// Split text into chunks at sentence boundaries (max ~200 chars) to avoid Chrome TTS cutoff
+const splitIntoChunks = (text: string, maxLen = 200): string[] => {
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      chunks.push(remaining);
+      break;
+    }
+    // Find last sentence boundary within maxLen
+    let splitAt = -1;
+    for (const sep of ['. ', '। ', '? ', '! ', '\n']) {
+      const idx = remaining.lastIndexOf(sep, maxLen);
+      if (idx > 0 && idx > splitAt) splitAt = idx + sep.length;
+    }
+    if (splitAt <= 0) {
+      // fallback: split at last space
+      splitAt = remaining.lastIndexOf(' ', maxLen);
+      if (splitAt <= 0) splitAt = maxLen;
+    }
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt);
+  }
+  return chunks;
+};
+
 // Voice helpers
 const getVoice = (lang: 'en' | 'hi'): SpeechSynthesisVoice | null => {
   const voices = window.speechSynthesis.getVoices();
-  const langTag = lang === 'hi' ? 'hi' : 'en';
-  // prefer female voices
-  const female = voices.find(v => v.lang.startsWith(langTag) && /female|Google.*Hindi|Google.*English/i.test(v.name));
+  if (lang === 'hi') {
+    const female = voices.find(v => v.lang.startsWith('hi') && /female|Google.*Hindi/i.test(v.name));
+    if (female) return female;
+    return voices.find(v => v.lang.startsWith('hi')) || null;
+  }
+  const female = voices.find(v => v.lang.startsWith('en') && /female|Google.*English/i.test(v.name));
   if (female) return female;
-  return voices.find(v => v.lang.startsWith(langTag)) || null;
+  return voices.find(v => v.lang.startsWith('en')) || null;
+};
+
+// PDF report helper
+const downloadReportPDF = (content: string) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) return;
+
+  // Convert markdown-like content to basic HTML
+  const htmlContent = content
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.*$)/gm, '<li>$1</li>')
+    .replace(/^---$/gm, '<hr/>')
+    .replace(/\n/g, '<br/>');
+
+  const date = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head>
+    <title>Renovix_AI_Health_Report</title>
+    <style>
+      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.7; max-width: 800px; margin: 0 auto; }
+      .header { text-align: center; border-bottom: 3px solid #0ea5e9; padding-bottom: 20px; margin-bottom: 30px; }
+      .header h1 { color: #0ea5e9; margin: 0; font-size: 28px; }
+      .header p { color: #666; margin: 5px 0 0; }
+      .content { margin-bottom: 30px; }
+      h2, h3 { color: #0369a1; margin-top: 20px; }
+      li { margin: 4px 0; }
+      hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+      .footer { margin-top: 40px; padding-top: 15px; border-top: 2px solid #e5e7eb; font-size: 12px; color: #888; text-align: center; }
+      @media print { body { padding: 20px; } }
+    </style>
+  </head><body>
+    <div class="header">
+      <h1>🏥 Renovix AI Health Report</h1>
+      <p>Generated on ${date}</p>
+    </div>
+    <div class="content">${htmlContent}</div>
+    <div class="footer">
+      <p>⚠️ This report is AI-generated for informational purposes only. Always consult a licensed physician.</p>
+      <p>Powered by Renovix AI — Advanced Medical Report Analysis</p>
+    </div>
+  </body></html>`);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow?.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  }, 500);
 };
 
 export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInterfaceProps) => {
@@ -48,7 +138,11 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
   const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [isPreparingVoice, setIsPreparingVoice] = useState(false);
+  const [voiceVolume, setVoiceVolume] = useState(100);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chunksRef = useRef<string[]>([]);
+  const chunkIndexRef = useRef(0);
   const { toast } = useToast();
 
   // Load voices
@@ -123,7 +217,33 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     }
   }, [sessionId, messageMeta, toast]);
 
-  // Voice narration
+  // Voice narration with chunking
+  const speakNextChunk = useCallback((lang: 'en' | 'hi', vol: number) => {
+    if (chunkIndexRef.current >= chunksRef.current.length) {
+      setSpeakingId(null);
+      setIsPaused(false);
+      setIsPreparingVoice(false);
+      return;
+    }
+    const text = chunksRef.current[chunkIndexRef.current];
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+    const voice = getVoice(lang);
+    if (voice) utterance.voice = voice;
+    utterance.volume = vol / 100;
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
+    utterance.onend = () => {
+      chunkIndexRef.current += 1;
+      speakNextChunk(lang, vol);
+    };
+    utterance.onerror = () => {
+      setSpeakingId(null);
+      setIsPaused(false);
+    };
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
   const speak = useCallback((msg: Message) => {
     const meta = getMeta(msg.id);
     if (speakingId === msg.id) {
@@ -137,26 +257,32 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
       return;
     }
     window.speechSynthesis.cancel();
+    setIsPreparingVoice(true);
+
     const text = meta.showHindi && meta.translatedContent ? meta.translatedContent : msg.content;
-    // Strip markdown for speech
     const plainText = text.replace(/[#*_~`>|-]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-    const utterance = new SpeechSynthesisUtterance(plainText);
-    const lang = meta.showHindi && meta.translatedContent ? 'hi' : 'en';
-    utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
-    const voice = getVoice(lang);
-    if (voice) utterance.voice = voice;
-    utterance.rate = 0.9;
-    utterance.onend = () => { setSpeakingId(null); setIsPaused(false); };
-    utterance.onerror = () => { setSpeakingId(null); setIsPaused(false); };
+    const lang: 'en' | 'hi' = meta.showHindi && meta.translatedContent ? 'hi' : 'en';
+
+    chunksRef.current = splitIntoChunks(plainText);
+    chunkIndexRef.current = 0;
+
     setSpeakingId(msg.id);
     setIsPaused(false);
-    window.speechSynthesis.speak(utterance);
-  }, [speakingId, isPaused, messageMeta]);
+
+    // Small delay to allow "preparing" indicator to show
+    setTimeout(() => {
+      setIsPreparingVoice(false);
+      speakNextChunk(lang, voiceVolume);
+    }, 300);
+  }, [speakingId, isPaused, messageMeta, voiceVolume, speakNextChunk]);
 
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis.cancel();
+    chunksRef.current = [];
+    chunkIndexRef.current = 0;
     setSpeakingId(null);
     setIsPaused(false);
+    setIsPreparingVoice(false);
   }, []);
 
   const sendMessage = async (override?: string) => {
@@ -338,20 +464,24 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
                           <Bot className="w-5 h-5 text-primary" />
                         </div>
                       )}
-                      <div className={`max-w-[80%] rounded-lg p-3 ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}>
+                      <div className={`rounded-lg ${
+                        message.role === 'user'
+                          ? 'max-w-[80%] p-3 bg-primary text-primary-foreground'
+                          : 'max-w-[85%] p-5 bg-muted text-foreground border-l-4 border-primary/20'
+                      }`}>
                         {message.role === 'assistant' ? (
                           <>
                             {meta.showHindi && meta.translatedContent && (
                               <Badge variant="secondary" className="mb-2 text-xs">हिंदी</Badge>
                             )}
-                            <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                            <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-headings:mt-4 prose-headings:mb-2 prose-li:my-1 prose-p:my-2 prose-hr:border-border/50 prose-hr:my-4">
                               <ReactMarkdown>{displayContent}</ReactMarkdown>
                             </div>
                           </>
                         ) : (
                           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                         )}
-                        <p className="text-xs opacity-70 mt-1">{message.timestamp.toLocaleTimeString()}</p>
+                        <p className="text-xs opacity-70 mt-2">{message.timestamp.toLocaleTimeString()}</p>
                       </div>
                       {message.role === 'user' && (
                         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -362,7 +492,7 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
 
                     {/* Action buttons for assistant messages */}
                     {message.role === 'assistant' && !isLoading && (
-                      <div className="flex items-center gap-2 ml-11 mt-1.5">
+                      <div className="flex flex-wrap items-center gap-2 ml-11 mt-1.5">
                         {/* Translate button */}
                         <Button
                           variant="ghost"
@@ -385,13 +515,20 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
                           size="sm"
                           className="h-7 text-xs gap-1 text-muted-foreground hover:text-primary"
                           onClick={() => speak(message)}
+                          disabled={isPreparingVoice}
                         >
-                          {speakingId === message.id ? (
+                          {isPreparingVoice && speakingId === message.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : speakingId === message.id ? (
                             isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />
                           ) : (
                             <Volume2 className="w-3.5 h-3.5" />
                           )}
-                          {speakingId === message.id ? (isPaused ? 'Resume' : 'Pause') : 'Play Voice'}
+                          {isPreparingVoice && speakingId === message.id
+                            ? 'Preparing voice...'
+                            : speakingId === message.id
+                            ? (isPaused ? 'Resume' : 'Pause')
+                            : 'Play Voice'}
                         </Button>
 
                         {speakingId === message.id && (
@@ -403,6 +540,31 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
                           >
                             <VolumeX className="w-3.5 h-3.5" /> Stop
                           </Button>
+                        )}
+
+                        {/* PDF download button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs gap-1 text-muted-foreground hover:text-primary"
+                          onClick={() => downloadReportPDF(displayContent)}
+                        >
+                          <FileDown className="w-3.5 h-3.5" /> Download PDF
+                        </Button>
+
+                        {/* Volume slider when speaking */}
+                        {speakingId === message.id && (
+                          <div className="flex items-center gap-2 ml-2">
+                            <Volume2 className="w-3 h-3 text-muted-foreground" />
+                            <Slider
+                              value={[voiceVolume]}
+                              onValueChange={(val) => setVoiceVolume(val[0])}
+                              min={0}
+                              max={100}
+                              step={10}
+                              className="w-20"
+                            />
+                          </div>
                         )}
                       </div>
                     )}

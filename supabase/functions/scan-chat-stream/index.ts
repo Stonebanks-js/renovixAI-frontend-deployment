@@ -67,6 +67,9 @@ STRICT FORMATTING RULES:
 - Use simple, patient-friendly language.
 - Keep medical accuracy intact.
 - Use markdown formatting (bold, headers, bullet points).
+- Add a horizontal rule (---) between each major section for visual separation.
+- Add an empty line before and after each section heading.
+- Keep each bullet point on its own line with proper spacing.
 
 DISCLAIMER (MANDATORY — ALWAYS INCLUDE AT END):
 "⚠️ **Disclaimer:** These suggestions are for informational purposes only. All medicines should be taken strictly as prescribed by a licensed physician. Do not self-medicate. Please consult your doctor before taking any medication."
