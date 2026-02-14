@@ -21,18 +21,30 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) navigate('/');
-    });
+    let isMounted = true;
 
+    // Set up auth listener FIRST (before getSession)
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
       if (event === 'SIGNED_IN' && session?.user) {
         toast({ title: "Welcome!", description: "Redirecting to your dashboard..." });
-        setTimeout(() => navigate('/'), 500);
+        setTimeout(() => {
+          if (isMounted) navigate('/', { replace: true });
+        }, 500);
       }
     });
 
-    return () => authListener.subscription.unsubscribe();
+    // Then check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted && session?.user) {
+        navigate('/', { replace: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, [navigate, toast]);
 
   const handleInputChange = (field: string, value: string) => {
