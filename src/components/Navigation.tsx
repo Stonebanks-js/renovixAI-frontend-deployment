@@ -26,7 +26,7 @@ const Navigation = () => {
               <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              NephroScan AI
+              Renovix AI
             </span>
           </Link>
 

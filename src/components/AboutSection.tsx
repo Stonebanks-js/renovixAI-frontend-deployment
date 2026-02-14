@@ -27,7 +27,7 @@ const AboutSection = () => {
           {/* Content */}
           <div>
             <div className="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 mb-6">
-              <span className="text-sm font-medium text-primary">About NephroScan AI</span>
+              <span className="text-sm font-medium text-primary">About Renovix AI</span>
             </div>
             
             <h2 className="heading-section">
@@ -35,7 +35,7 @@ const AboutSection = () => {
             </h2>
             
             <p className="text-medical mb-6">
-              NephroScan AI represents a breakthrough in medical diagnostics, combining 
+              Renovix AI represents a breakthrough in medical diagnostics, combining 
               cutting-edge artificial intelligence with decades of nephrology expertise. 
               Our platform empowers healthcare professionals with instant, accurate 
               diagnostic insights for kidney-related conditions.

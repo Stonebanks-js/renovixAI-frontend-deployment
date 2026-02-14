@@ -58,7 +58,7 @@ const About = () => {
     {
       year: '2021',
       title: 'Company Founded',
-      description: 'NephroScan AI was established by a team of nephrologists and AI researchers.'
+      description: 'Renovix AI was established by a team of nephrologists and AI researchers.'
     },
     {
       year: '2022',

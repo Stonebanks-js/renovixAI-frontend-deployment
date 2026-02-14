@@ -20,7 +20,7 @@ const Developer = () => {
 
   const projects = [
     {
-      title: "NephroScan AI",
+      title: "Renovix AI",
       description: "Advanced AI-powered kidney health analysis system using computer vision and machine learning",
       tech: ["Python", "TensorFlow", "OpenCV", "React"],
       githubUrl: "https://github.com/Stonebanks-js"
