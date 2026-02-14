@@ -46,11 +46,44 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
       .trim();
   };
 
+  // Safely convert any value to readable string (prevents [object Object])
+  const valueToString = (val: unknown): string => {
+    if (val === null || val === undefined) return 'No significant findings detected';
+    if (typeof val === 'string') return cleanText(val);
+    if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+    if (Array.isArray(val)) {
+      return val.map(item => valueToString(item)).filter(Boolean).join('\n');
+    }
+    if (typeof val === 'object') {
+      return Object.entries(val as Record<string, unknown>)
+        .map(([k, v]) => {
+          const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+          const text = valueToString(v);
+          return text ? `${label}: ${text}` : '';
+        })
+        .filter(Boolean)
+        .join('\n');
+    }
+    return String(val);
+  };
+
   // Parse findings into clean bullet points
   const renderFindings = () => {
+    if (!results.findings || typeof results.findings !== 'object') {
+      return <p className="text-muted-foreground text-sm">Key findings are being processed. Please re-analyze the report.</p>;
+    }
+
     return Object.entries(results.findings).map(([key, value]) => {
       const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
-      const content = cleanText(String(value));
+      const content = valueToString(value);
+      if (!content || content === 'No significant findings detected') {
+        return (
+          <div key={key} className="mb-5">
+            <p className="font-semibold text-foreground mb-1 capitalize">{title}</p>
+            <p className="text-muted-foreground leading-relaxed text-sm italic">No significant findings detected</p>
+          </div>
+        );
+      }
       return (
         <div key={key} className="mb-5">
           <p className="font-semibold text-foreground mb-1 capitalize">{title}</p>
@@ -62,7 +95,10 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
 
   // Parse recommendations into bullet points
   const renderRecommendations = () => {
-    const cleaned = cleanText(results.recommendations);
+    if (!results.recommendations) {
+      return <p className="text-muted-foreground text-sm italic">No recommendations available.</p>;
+    }
+    const cleaned = valueToString(results.recommendations);
     const lines = cleaned
       .split(/\n/)
       .map(l => l.replace(/^[\s\-*•·]+/, '').trim())
@@ -106,7 +142,7 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
           <section>
             <p className="font-semibold text-foreground mb-2">Condition Summary</p>
             <p className="text-muted-foreground leading-relaxed text-sm">
-              {cleanText(results.diagnosis)}
+              {valueToString(results.diagnosis)}
             </p>
           </section>
 

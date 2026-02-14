@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Activity, User, LogOut, LayoutDashboard, BarChart3, Salad } from 'lucide-react';
+import { Menu, X, User, LogOut, LayoutDashboard, BarChart3, Salad } from 'lucide-react';
+import renovixLogo from '@/assets/renovix-logo.png';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -78,11 +79,8 @@ const Navigation = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-border">
       <div className="container-medical">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative">
-              <Activity className="h-8 w-8 text-primary group-hover:text-secondary transition-colors duration-300" />
-              <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
+          <Link to="/" className="flex items-center gap-2 group">
+            <img src={renovixLogo} alt="Renovix AI" className="h-9 w-9 object-contain" />
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Renovix AI
             </span>
