@@ -1,10 +1,34 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+async function authenticateRequest(req: Request): Promise<{ userId: string } | Response> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const token = authHeader.replace('Bearer ', '');
+  const { data, error } = await anonClient.auth.getClaims(token);
+  if (error || !data?.claims?.sub) {
+    return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  return { userId: data.claims.sub as string };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,14 +36,11 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate
+    const authResult = await authenticateRequest(req);
+    if (authResult instanceof Response) return authResult;
+
     const { sessionId, message, pdfText, diagnosis, history } = await req.json();
-    console.log("scan-chat-stream start", {
-      sessionId,
-      hasPdfText: !!pdfText,
-      diagnosisLen: diagnosis?.length || 0,
-      historyCount: Array.isArray(history) ? history.length : 0,
-      messageLen: message?.length || 0
-    });
 
     if (!sessionId || !message) {
       return new Response(
@@ -37,7 +58,6 @@ serve(async (req) => {
       );
     }
 
-    // Build system context with optional diagnosis and truncated report text
     let systemContext = `You are a warm, empathetic, and professional medical AI assistant named Renovix AI, helping patients understand their medical reports and scan results.
 Provide clear, concise answers grounded in the provided report.
 
@@ -60,7 +80,7 @@ Always structure your responses using these sections where applicable:
 4. **Recommended Actions** — Bullet points
 5. **Emergency Warning** — Only include if applicable
 6. **Medicine Suggestions** — Only when user asks about medicines/treatment/emergency care
-7. **Home Remedies** — Only when user asks about home remedies or natural treatments
+7. **Home Remedies** — Only when user asks about home remedies or natural treatment
 8. **Disclaimer** — Short, supportive (always include)
 
 MEDICINE SUGGESTIONS RULES:
@@ -95,8 +115,7 @@ If unsure about a condition, say so and recommend consulting a clinician immedia
       systemContext += `\n\nDiagnosis from the analysis: ${diagnosis}`;
     }
     if (pdfText && typeof pdfText === "string" && pdfText.length > 0) {
-      const clipped = pdfText.slice(0, 16000); // keep generous context but below typical limits
-      systemContext += `\n\nExtracted report content:\n${clipped}`;
+      systemContext += `\n\nExtracted report content:\n${pdfText.slice(0, 16000)}`;
     }
 
     const messages = [
@@ -119,36 +138,27 @@ If unsure about a condition, say so and recommend consulting a clinician immedia
     });
 
     if (!resp.ok || !resp.body) {
-      // Surface rate limit and payment errors clearly
+      console.error("AI gateway error:", resp.status);
       if (resp.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (resp.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required, please add funds to your Lovable AI workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "AI service quota exceeded." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const t = await resp.text();
-      console.error("AI gateway error:", resp.status, t);
-      return new Response(
-        JSON.stringify({ error: "AI gateway error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "AI service temporarily unavailable" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Return the SSE stream directly
-    console.log("scan-chat-stream: streaming start");
     return new Response(resp.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
-    console.error("scan-chat-stream error:", e);
+    const errorId = crypto.randomUUID();
+    console.error(`[${errorId}] scan-chat-stream error:`, e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred processing your request", requestId: errorId }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
