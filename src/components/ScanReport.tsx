@@ -3,6 +3,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Upload, Download } from 'lucide-react';
+import { cleanText, valueToString, getRiskLevel, sanitizeForPdf } from '@/lib/sanitizeText';
+
+interface KeyFinding {
+  finding: string;
+  value: string;
+  significance: string;
+}
 
 interface ScanResults {
   diagnosis: string;
@@ -24,73 +31,43 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
     return 'Needs Review';
   };
 
-  const getRiskLevel = (diagnosis: string) => {
-    const lower = diagnosis.toLowerCase();
-    if (lower.includes('normal')) return { label: 'Low Risk', className: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
-    if (lower.includes('tumor') || lower.includes('suspicious')) return { label: 'High Risk', className: 'text-red-700 bg-red-50 border-red-200' };
-    return { label: 'Moderate Risk', className: 'text-amber-700 bg-amber-50 border-amber-200' };
-  };
+  const risk = getRiskLevel(results.diagnosis, results.confidence);
 
-  const risk = getRiskLevel(results.diagnosis);
-
-  // Clean text: strip markdown artifacts, emojis, decorative symbols
-  const cleanText = (text: string): string => {
-    return text
-      .replace(/#{1,6}\s*/g, '')       // remove markdown headings
-      .replace(/\*{1,3}/g, '')         // remove bold/italic markers
-      .replace(/_{1,3}/g, '')          // remove underline markers
-      .replace(/---+/g, '')            // remove horizontal rules
-      .replace(/```[\s\S]*?```/g, '')  // remove code blocks
-      .replace(/[^\w\s.,;:!?()\-–—•·/\\%°\n\r'"&@+=$<>[\]{}]/g, '') // remove emojis/decorative chars
-      .replace(/\n{3,}/g, '\n\n')      // normalize spacing
-      .trim();
-  };
-
-  // Safely convert any value to readable string (prevents [object Object])
-  const valueToString = (val: unknown): string => {
-    if (val === null || val === undefined) return 'No significant findings detected';
-    if (typeof val === 'string') return cleanText(val);
-    if (typeof val === 'number' || typeof val === 'boolean') return String(val);
-    if (Array.isArray(val)) {
-      return val.map(item => valueToString(item)).filter(Boolean).join('\n');
-    }
-    if (typeof val === 'object') {
-      return Object.entries(val as Record<string, unknown>)
-        .map(([k, v]) => {
-          const label = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
-          const text = valueToString(v);
-          return text ? `${label}: ${text}` : '';
-        })
-        .filter(Boolean)
-        .join('\n');
-    }
-    return String(val);
-  };
-
-  // Parse findings into clean bullet points
-  const renderFindings = () => {
-    if (!results.findings || typeof results.findings !== 'object') {
-      return <p className="text-muted-foreground text-sm">Key findings are being processed. Please re-analyze the report.</p>;
+  // Render structured key_findings array
+  const renderKeyFindings = () => {
+    const findings = results.findings;
+    if (!findings || typeof findings !== 'object') {
+      return <p className="text-muted-foreground text-sm italic">Key findings are being processed. Please re-analyze the report.</p>;
     }
 
-    return Object.entries(results.findings).map(([key, value]) => {
+    // Handle structured key_findings array
+    const keyFindings: KeyFinding[] = findings.key_findings;
+    if (Array.isArray(keyFindings) && keyFindings.length > 0) {
+      return (
+        <div className="space-y-4">
+          {keyFindings.map((item, idx) => (
+            <div key={idx} className="pl-4 border-l-2 border-primary/20">
+              <p className="font-semibold text-foreground text-sm">{cleanText(item.finding)}</p>
+              <p className="text-xs text-primary/80 mt-0.5">{cleanText(item.value)}</p>
+              <p className="text-muted-foreground text-sm mt-1 leading-relaxed">{cleanText(item.significance)}</p>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Fallback: render findings as key-value pairs
+    return Object.entries(findings).map(([key, value]) => {
+      if (key === 'key_findings' || key === 'summary' || key === 'prognosis_and_implications') return null;
       const title = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
       const content = valueToString(value);
-      if (!content || content === 'No significant findings detected') {
-        return (
-          <div key={key} className="mb-5">
-            <p className="font-semibold text-foreground mb-1 capitalize">{title}</p>
-            <p className="text-muted-foreground leading-relaxed text-sm italic">No significant findings detected</p>
-          </div>
-        );
-      }
       return (
-        <div key={key} className="mb-5">
-          <p className="font-semibold text-foreground mb-1 capitalize">{title}</p>
+        <div key={key} className="mb-4">
+          <p className="font-semibold text-foreground mb-1 capitalize text-sm">{title}</p>
           <p className="text-muted-foreground leading-relaxed text-sm whitespace-pre-wrap">{content}</p>
         </div>
       );
-    });
+    }).filter(Boolean);
   };
 
   // Parse recommendations into bullet points
@@ -98,11 +75,11 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
     if (!results.recommendations) {
       return <p className="text-muted-foreground text-sm italic">No recommendations available.</p>;
     }
-    const cleaned = valueToString(results.recommendations);
+    const cleaned = sanitizeForPdf(results.recommendations);
     const lines = cleaned
       .split(/\n/)
-      .map(l => l.replace(/^[\s\-*•·]+/, '').trim())
-      .filter(l => l.length > 0);
+      .map(l => l.replace(/^[\s\-*•·\d.]+/, '').trim())
+      .filter(l => l.length > 3);
 
     if (lines.length <= 1) {
       return <p className="text-muted-foreground leading-relaxed text-sm">{cleaned}</p>;
@@ -112,12 +89,56 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
       <ul className="space-y-2">
         {lines.map((line, idx) => (
           <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground leading-relaxed">
-            <span className="mt-1 text-primary">•</span>
+            <span className="mt-1 text-primary font-bold">•</span>
             <span>{line}</span>
           </li>
         ))}
       </ul>
     );
+  };
+
+  // PDF Download handler
+  const handleDownloadPdf = () => {
+    const summary = results.findings?.summary ? sanitizeForPdf(valueToString(results.findings.summary)) : '';
+    const keyFindings: KeyFinding[] = results.findings?.key_findings || [];
+    const prognosis = results.findings?.prognosis_and_implications ? sanitizeForPdf(valueToString(results.findings.prognosis_and_implications)) : '';
+    const recommendations = results.recommendations ? sanitizeForPdf(results.recommendations) : '';
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const findingsText = keyFindings.map((f: KeyFinding) =>
+      `  ${sanitizeForPdf(f.finding)}\n  Value: ${sanitizeForPdf(f.value)}\n  ${sanitizeForPdf(f.significance)}`
+    ).join('\n\n');
+
+    const content = [
+      `RENOVIX AI - MEDICAL ANALYSIS REPORT`,
+      `Generated: ${date}`,
+      ``,
+      `CONDITION SUMMARY`,
+      sanitizeForPdf(results.diagnosis),
+      summary ? `\n${summary}` : '',
+      ``,
+      `DIAGNOSTIC CONFIDENCE: ${(results.confidence * 100).toFixed(1)}% - ${getConfidenceLabel(results.confidence)}`,
+      ``,
+      `RISK LEVEL: ${risk.label}`,
+      ``,
+      `KEY FINDINGS`,
+      findingsText || 'No significant findings detected',
+      prognosis ? `\nPROGNOSIS\n${prognosis}` : '',
+      ``,
+      `RECOMMENDATIONS`,
+      recommendations || 'No recommendations available.',
+      ``,
+      `DISCLAIMER`,
+      `This AI-powered analysis is for informational purposes only and should not replace professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider for medical guidance.`,
+    ].filter(Boolean).join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Renovix-AI-Report-${date.replace(/\s/g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -128,11 +149,7 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
           <h2 className="text-2xl font-bold text-foreground mb-1">AI Analysis Report</h2>
           <p className="text-sm text-muted-foreground">
             Generated on {new Date().toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
+              year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
             })}
           </p>
         </div>
@@ -142,8 +159,13 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
           <section>
             <p className="font-semibold text-foreground mb-2">Condition Summary</p>
             <p className="text-muted-foreground leading-relaxed text-sm">
-              {valueToString(results.diagnosis)}
+              {cleanText(results.diagnosis)}
             </p>
+            {results.findings?.summary && (
+              <p className="text-muted-foreground leading-relaxed text-sm mt-2">
+                {cleanText(valueToString(results.findings.summary))}
+              </p>
+            )}
           </section>
 
           {/* Confidence */}
@@ -160,13 +182,23 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
           {/* Key Findings */}
           <section>
             <p className="font-semibold text-foreground mb-3">Key Findings</p>
-            <div className="pl-1">{renderFindings()}</div>
+            <div className="pl-1">{renderKeyFindings()}</div>
           </section>
+
+          {/* Prognosis */}
+          {results.findings?.prognosis_and_implications && (
+            <section>
+              <p className="font-semibold text-foreground mb-2">Prognosis</p>
+              <p className="text-muted-foreground leading-relaxed text-sm">
+                {cleanText(valueToString(results.findings.prognosis_and_implications))}
+              </p>
+            </section>
+          )}
 
           {/* Risk Level */}
           <section>
             <p className="font-semibold text-foreground mb-2">Risk Level</p>
-            <span className={`inline-block px-3 py-1 rounded-md text-sm font-medium border ${risk.className}`}>
+            <span className={`inline-block px-3 py-1 rounded-md text-sm font-medium border ${risk.color}`}>
               {risk.label}
             </span>
           </section>
@@ -183,17 +215,16 @@ const ScanReport: React.FC<ScanReportProps> = ({ results, onReset }) => {
             <p className="text-sm text-muted-foreground leading-relaxed">
               This AI-powered analysis is for informational purposes only and should not replace
               professional medical advice, diagnosis, or treatment. Always consult a qualified
-              healthcare provider for medical guidance. Do not delay seeking professional care
-              based on AI analysis results.
+              healthcare provider for medical guidance.
             </p>
           </section>
         </div>
 
         {/* Actions */}
         <div className="px-8 py-6 border-t border-border/40 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button variant="nephro" size="lg" className="w-full">
+          <Button variant="nephro" size="lg" className="w-full" onClick={handleDownloadPdf}>
             <Download className="h-5 w-5 mr-2" />
-            Download Full Report
+            Download Report
           </Button>
           <Button variant="outline" size="lg" className="w-full" onClick={onReset}>
             <Upload className="h-5 w-5 mr-2" />
