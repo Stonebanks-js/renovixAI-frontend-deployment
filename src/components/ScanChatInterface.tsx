@@ -69,56 +69,108 @@ const getVoice = (lang: 'en' | 'hi'): SpeechSynthesisVoice | null => {
   return voices.find(v => v.lang.startsWith('en')) || null;
 };
 
-// PDF report helper
+// Strip emojis from text
+const stripEmojis = (text: string): string =>
+  text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{2700}-\u{27BF}\u{E000}-\u{F8FF}]/gu, '').replace(/\s{2,}/g, ' ');
+
+// Convert markdown to clean HTML for PDF (no emojis, no raw symbols)
+const markdownToCleanHTML = (md: string): string => {
+  let html = stripEmojis(md);
+  // Headers
+  html = html.replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>');
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // List items
+  html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/((?:<li>.*?<\/li>\s*)+)/g, '<ul>$1</ul>');
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, '<hr/>');
+  // Line breaks for remaining newlines
+  html = html.replace(/\n{2,}/g, '<br/><br/>');
+  html = html.replace(/\n/g, '<br/>');
+  return html;
+};
+
+// PDF report helper — professional medical report layout
 const downloadReportPDF = (content: string) => {
   const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow?.document;
   if (!doc) return;
 
-  // Convert markdown-like content to basic HTML
-  const htmlContent = content
-    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^- (.*$)/gm, '<li>$1</li>')
-    .replace(/^---$/gm, '<hr/>')
-    .replace(/\n/g, '<br/>');
-
-  const date = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+  const htmlContent = markdownToCleanHTML(content);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const patientId = `RNX-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
+  const referralId = `REF-${Math.random().toString(36).slice(2,9).toUpperCase()}`;
 
   doc.open();
   doc.write(`<!DOCTYPE html><html><head>
     <title>Renovix_AI_Health_Report</title>
     <style>
-      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.7; max-width: 800px; margin: 0 auto; }
-      .header { text-align: center; border-bottom: 3px solid #0ea5e9; padding-bottom: 20px; margin-bottom: 30px; }
-      .header h1 { color: #0ea5e9; margin: 0; font-size: 28px; }
-      .header p { color: #666; margin: 5px 0 0; }
+      @page { size: A4; margin: 20mm 18mm 25mm 18mm; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #1a1a2e; line-height: 1.7; font-size: 13px; padding: 0; }
+      .page { max-width: 100%; padding: 0 10px; }
+      .header { border-bottom: 3px solid #0c4a6e; padding-bottom: 16px; margin-bottom: 20px; }
+      .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+      .brand { font-size: 26px; font-weight: 800; color: #0c4a6e; letter-spacing: -0.5px; }
+      .brand-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+      .report-type { text-align: right; }
+      .report-type span { display: block; font-size: 11px; color: #64748b; }
+      .report-type strong { color: #0c4a6e; font-size: 13px; }
+      .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-top: 12px; font-size: 12px; color: #334155; }
+      .meta-grid .label { font-weight: 600; color: #0c4a6e; }
       .content { margin-bottom: 30px; }
-      h2, h3 { color: #0369a1; margin-top: 20px; }
-      li { margin: 4px 0; }
-      hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
-      .footer { margin-top: 40px; padding-top: 15px; border-top: 2px solid #e5e7eb; font-size: 12px; color: #888; text-align: center; }
-      @media print { body { padding: 20px; } }
+      .content h1 { font-size: 18px; color: #0c4a6e; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+      .content h2 { font-size: 16px; color: #0c4a6e; margin: 18px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+      .content h3 { font-size: 14px; color: #1e3a5f; margin: 14px 0 6px; }
+      .content ul { padding-left: 20px; margin: 8px 0; }
+      .content li { margin: 4px 0; line-height: 1.6; }
+      .content hr { border: none; border-top: 1px solid #cbd5e1; margin: 16px 0; }
+      .content strong { color: #0f172a; }
+      .content p, .content br+br { margin: 6px 0; }
+      .footer { margin-top: 30px; padding-top: 12px; border-top: 2px solid #0c4a6e; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
+      .disclaimer { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; margin-top: 20px; font-size: 11px; color: #475569; line-height: 1.5; }
+      .disclaimer strong { color: #b91c1c; }
+      @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     </style>
   </head><body>
-    <div class="header">
-      <h1>🏥 Renovix AI Health Report</h1>
-      <p>Generated on ${date}</p>
-    </div>
-    <div class="content">${htmlContent}</div>
-    <div class="footer">
-      <p>⚠️ This report is AI-generated for informational purposes only. Always consult a licensed physician.</p>
-      <p>Powered by Renovix AI — Advanced Medical Report Analysis</p>
+    <div class="page">
+      <div class="header">
+        <div class="header-top">
+          <div>
+            <div class="brand">Renovix AI</div>
+            <div class="brand-sub">Advanced Medical Report Analysis System</div>
+          </div>
+          <div class="report-type">
+            <strong>AI Medical Analysis Report</strong>
+            <span>Auto-Generated Clinical Summary</span>
+          </div>
+        </div>
+        <div class="meta-grid">
+          <div><span class="label">Patient ID:</span> ${patientId}</div>
+          <div><span class="label">Referral ID:</span> ${referralId}</div>
+          <div><span class="label">Report Date:</span> ${dateStr}</div>
+          <div><span class="label">Report Time:</span> ${timeStr}</div>
+        </div>
+      </div>
+      <div class="content">${htmlContent}</div>
+      <div class="disclaimer">
+        <strong>Disclaimer:</strong> This report is AI-generated for informational purposes only. It does not constitute medical advice. All findings and suggestions should be reviewed and validated by a licensed healthcare professional. Do not self-medicate based on this report.
+      </div>
+      <div class="footer">
+        <span>Powered by Renovix AI</span>
+        <span>Confidential — For Patient Use Only</span>
+      </div>
     </div>
   </body></html>`);
   doc.close();
@@ -217,31 +269,60 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     }
   }, [sessionId, messageMeta, toast]);
 
+  // Unlock AudioContext on first user interaction (browser autoplay policy)
+  const unlockAudio = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      console.log('[Voice] AudioContext unlocked');
+    } catch (e) {
+      console.warn('[Voice] AudioContext unlock failed:', e);
+    }
+  }, []);
+
   // Voice narration with chunking
   const speakNextChunk = useCallback((lang: 'en' | 'hi', vol: number) => {
     if (chunkIndexRef.current >= chunksRef.current.length) {
+      console.log('[Voice] All chunks spoken, done.');
       setSpeakingId(null);
       setIsPaused(false);
       setIsPreparingVoice(false);
       return;
     }
     const text = chunksRef.current[chunkIndexRef.current];
+    console.log(`[Voice] Speaking chunk ${chunkIndexRef.current + 1}/${chunksRef.current.length}, len=${text.length}, vol=${vol}`);
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
     const voice = getVoice(lang);
-    if (voice) utterance.voice = voice;
-    utterance.volume = vol / 100;
-    utterance.rate = 0.85;
+    if (voice) {
+      utterance.voice = voice;
+      console.log(`[Voice] Using voice: ${voice.name} (${voice.lang})`);
+    } else {
+      console.warn('[Voice] No matching voice found for', lang);
+    }
+    utterance.volume = Math.max(0.1, vol / 100);
+    utterance.rate = 0.75;
     utterance.pitch = 1.0;
     utterance.onend = () => {
+      console.log(`[Voice] Chunk ${chunkIndexRef.current + 1} finished`);
       chunkIndexRef.current += 1;
       speakNextChunk(lang, vol);
     };
-    utterance.onerror = () => {
+    utterance.onerror = (e) => {
+      console.error('[Voice] Utterance error:', e);
       setSpeakingId(null);
       setIsPaused(false);
     };
-    window.speechSynthesis.speak(utterance);
+    // Chrome bug: cancel before speak to ensure queue is clear
+    window.speechSynthesis.cancel();
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+      console.log('[Voice] speechSynthesis.speak() called');
+    }, 50);
   }, []);
 
   const speak = useCallback((msg: Message) => {
@@ -250,18 +331,29 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
       if (isPaused) {
         window.speechSynthesis.resume();
         setIsPaused(false);
+        console.log('[Voice] Resumed');
       } else {
         window.speechSynthesis.pause();
         setIsPaused(true);
+        console.log('[Voice] Paused');
       }
       return;
     }
+
+    // Unlock audio context on user interaction
+    unlockAudio();
+
     window.speechSynthesis.cancel();
     setIsPreparingVoice(true);
 
     const text = meta.showHindi && meta.translatedContent ? meta.translatedContent : msg.content;
-    const plainText = text.replace(/[#*_~`>|-]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // Strip markdown symbols and emojis for clean speech
+    const plainText = stripEmojis(
+      text.replace(/[#*_~`>|-]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    ).trim();
     const lang: 'en' | 'hi' = meta.showHindi && meta.translatedContent ? 'hi' : 'en';
+
+    console.log(`[Voice] Starting narration, lang=${lang}, textLen=${plainText.length}, volume=${voiceVolume}`);
 
     chunksRef.current = splitIntoChunks(plainText);
     chunkIndexRef.current = 0;
@@ -269,12 +361,12 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     setSpeakingId(msg.id);
     setIsPaused(false);
 
-    // Small delay to allow "preparing" indicator to show
+    // Small delay to allow "preparing" indicator to show & voices to load
     setTimeout(() => {
       setIsPreparingVoice(false);
       speakNextChunk(lang, voiceVolume);
-    }, 300);
-  }, [speakingId, isPaused, messageMeta, voiceVolume, speakNextChunk]);
+    }, 400);
+  }, [speakingId, isPaused, messageMeta, voiceVolume, speakNextChunk, unlockAudio]);
 
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis.cancel();
@@ -474,7 +566,7 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
                             {meta.showHindi && meta.translatedContent && (
                               <Badge variant="secondary" className="mb-2 text-xs">हिंदी</Badge>
                             )}
-                            <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-headings:mt-4 prose-headings:mb-2 prose-li:my-1 prose-p:my-2 prose-hr:border-border/50 prose-hr:my-4">
+                        <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-foreground prose-h2:text-[15px] prose-h2:mt-5 prose-h2:mb-2 prose-h3:text-[14px] prose-h3:mt-4 prose-h3:mb-1.5 prose-li:my-1.5 prose-p:my-2.5 prose-p:leading-relaxed prose-ul:my-2 prose-hr:border-border/40 prose-hr:my-5 prose-strong:text-foreground">
                               <ReactMarkdown>{displayContent}</ReactMarkdown>
                             </div>
                           </>
