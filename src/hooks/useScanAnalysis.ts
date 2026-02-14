@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import * as pdfjs from 'pdfjs-dist';
@@ -94,6 +94,8 @@ export const useScanAnalysis = () => {
   const [currentSession, setCurrentSession] = useState<ScanSession | null>(null);
   const { toast } = useToast();
   const [lastExtractedPdfText, setLastExtractedPdfText] = useState<string>('');
+  const pdfTextRef = useRef<string>('');
+  const fetchResultsRef = useRef<(sessionId: string) => Promise<void>>(null as any);
   const [analysisDebug, setAnalysisDebug] = useState<AnalysisDebug>({ steps: [] });
   const addStep = (s: string) => setAnalysisDebug((prev) => ({ ...prev, steps: [...prev.steps, s] }));
 
@@ -227,6 +229,7 @@ if (isValidDoc) {
     if (finalText && finalText.trim().length > 0) {
       extractedPdfText = finalText;
       setLastExtractedPdfText(finalText);
+      pdfTextRef.current = finalText;
       console.log('PDF text prepared, length:', extractedPdfText.length);
       setAnalysisDebug((prev) => ({ ...prev, pdfTextLength: extractedPdfText.length, aiMode: 'pdfText', aiModel: 'google/gemini-2.5-pro' }));
       setAnalysisProgress(30);
@@ -272,7 +275,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
             
             if (updatedSession.status === 'completed') {
               addStep('Session completed - fetching results');
-              fetchResults(session.id);
+              fetchResultsRef.current(session.id);
               // Cleanup RT channel on completion
               supabase.removeChannel(channel);
             } else if (updatedSession.status === 'failed') {
@@ -308,7 +311,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
               if (typeof row.progress === 'number') setAnalysisProgress(row.progress);
               if (row.status === 'completed') {
                 addStep('Polling detected completion - fetching results');
-                fetchResults(session.id);
+                fetchResultsRef.current(session.id);
                 break;
               }
               if (row.status === 'failed') {
@@ -430,7 +433,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
 
       // Auto-save to health_reports for dashboard sync
       try {
-        const patientName = extractPatientName(lastExtractedPdfText) || null;
+        const patientName = extractPatientName(pdfTextRef.current) || null;
         const reportData = {
           ...analysisData,
           report_id: generateReportId(),
@@ -438,12 +441,17 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
           patient_name: patientName,
           uploaded_at: new Date().toISOString(),
         };
-        await supabase.from('health_reports').insert({
+        const { error: healthReportError } = await supabase.from('health_reports').insert({
           session_id: sessionId,
           report_data: reportData as any,
         });
+        if (healthReportError) {
+          console.error('Failed to save health report to dashboard:', healthReportError);
+        } else {
+          console.log('Health report saved for dashboard sync');
+        }
       } catch (e) {
-        console.warn('Failed to save health report:', e);
+        console.error('Failed to save health report:', e);
       }
 
       setIsAnalyzing(false);
@@ -463,7 +471,10 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
         variant: 'destructive',
       });
     }
-  }, [toast, lastExtractedPdfText]);
+  }, [toast]);
+
+  // Keep ref in sync so stale closures always call latest version
+  fetchResultsRef.current = fetchResults;
 
   const resetAnalysis = useCallback(() => {
     setIsAnalyzing(false);
@@ -471,6 +482,7 @@ const { data: analysisData, error: analysisError } = await supabase.functions.in
     setAnalysisResults(null);
     setCurrentSession(null);
     setLastExtractedPdfText('');
+    pdfTextRef.current = '';
   }, []);
 
   return {
