@@ -10,7 +10,7 @@ import AIScan from "./pages/AIScan";
 import HowItWorks from "./pages/HowItWorks";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
-import Developer from "./pages/Developer";
+
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
@@ -28,7 +28,7 @@ const App = () => (
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/ai-scan" element={<AIScan />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/developer" element={<Developer />} />
+          
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth" element={<Auth />} />

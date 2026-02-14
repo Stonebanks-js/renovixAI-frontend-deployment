@@ -70,7 +70,7 @@ const Navigation = () => {
     { name: 'About', href: '/about' },
     { name: 'How It Works', href: '/how-it-works' },
     { name: 'AI Scan', href: '/ai-scan' },
-    { name: 'Developer', href: '/developer' },
+    
     { name: 'Contact', href: '/contact' },
   ];
 
