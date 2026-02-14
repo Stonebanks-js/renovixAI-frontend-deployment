@@ -129,7 +129,7 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
               <Heart className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-xl">Welcome to NephroScan AI</DialogTitle>
+              <DialogTitle className="text-xl">Welcome to Renovix AI</DialogTitle>
               <DialogDescription>
                 Please provide your basic health information to get started
               </DialogDescription>

@@ -140,7 +140,7 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* NephroScan Button Variants */
+  /* Renovix Button Variants */
   .btn-medical {
     @apply relative overflow-hidden rounded-lg px-6 py-3 font-medium transition-all duration-300;
     @apply shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)];
@@ -170,7 +170,7 @@ All colors MUST be HSL.
     @apply shadow-none hover:shadow-[var(--shadow-soft)];
   }
 
-  /* NephroScan Card Variants */
+  /* Renovix Card Variants */
   .card-medical {
     @apply rounded-xl border bg-card p-6 shadow-[var(--shadow-soft)];
     @apply transition-all duration-300 hover:shadow-[var(--shadow-medium)];
@@ -217,7 +217,7 @@ All colors MUST be HSL.
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  /* NephroScan Typography */
+  /* Renovix Typography */
   .heading-nephro {
     @apply text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tight;
     text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);

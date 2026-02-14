@@ -66,7 +66,7 @@ const Contact = () => {
               Get in Touch
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Have questions about NephroScan AI? Our team of experts is here to help. 
+              Have questions about Renovix AI? Our team of experts is here to help. 
               Whether you're a healthcare professional, researcher, or potential partner, 
               we'd love to hear from you.
             </p>
@@ -213,17 +213,17 @@ const Contact = () => {
             </div>
             <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
             <p className="text-muted-foreground mt-2">
-              Find answers to common questions about NephroScan AI
+              Find answers to common questions about Renovix AI
             </p>
           </div>
 
           <Accordion type="single" collapsible className="space-y-4">
-            <AccordionItem value="what-is-nephroscan" className="border rounded-lg px-6">
+            <AccordionItem value="what-is-renovix" className="border rounded-lg px-6">
               <AccordionTrigger className="text-left">
-                What is NephroScan AI and how does it work?
+                What is Renovix AI and how does it work?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                NephroScan AI is an advanced medical diagnostic platform that uses artificial intelligence to analyze kidney-related medical scans and provide insights. Our AI model processes medical images to detect potential abnormalities and provide preliminary diagnostic suggestions to assist healthcare professionals.
+                Renovix AI is an advanced medical diagnostic platform that uses artificial intelligence to analyze kidney-related medical scans and provide insights. Our AI model processes medical images to detect potential abnormalities and provide preliminary diagnostic suggestions to assist healthcare professionals.
               </AccordionContent>
             </AccordionItem>
 
@@ -232,7 +232,7 @@ const Contact = () => {
                 How accurate is the AI diagnosis?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                Our AI model has been trained on extensive medical datasets and achieves high accuracy rates. However, it's important to note that NephroScan AI is designed to assist healthcare professionals, not replace them. All results should be reviewed by qualified medical practitioners before making any treatment decisions.
+                Our AI model has been trained on extensive medical datasets and achieves high accuracy rates. However, it's important to note that Renovix AI is designed to assist healthcare professionals, not replace them. All results should be reviewed by qualified medical practitioners before making any treatment decisions.
               </AccordionContent>
             </AccordionItem>
 
@@ -247,10 +247,10 @@ const Contact = () => {
 
             <AccordionItem value="supported-scans" className="border rounded-lg px-6">
               <AccordionTrigger className="text-left">
-                What types of medical scans does NephroScan AI support?
+                What types of medical scans does Renovix AI support?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                Currently, NephroScan AI supports CT scans, MRI images, and ultrasound images related to kidney and urological conditions. We're continuously working to expand our support for additional imaging modalities and medical conditions.
+                Currently, Renovix AI supports CT scans, MRI images, and ultrasound images related to kidney and urological conditions. We're continuously working to expand our support for additional imaging modalities and medical conditions.
               </AccordionContent>
             </AccordionItem>
 
@@ -268,13 +268,13 @@ const Contact = () => {
                 Do I need to be a medical professional to use this service?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                While NephroScan AI can be used by patients, we strongly recommend that all results be interpreted by qualified healthcare professionals. The platform is designed to assist medical professionals in their diagnostic process and provide patients with additional insights into their health data.
+                While Renovix AI can be used by patients, we strongly recommend that all results be interpreted by qualified healthcare professionals. The platform is designed to assist medical professionals in their diagnostic process and provide patients with additional insights into their health data.
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="cost" className="border rounded-lg px-6">
               <AccordionTrigger className="text-left">
-                What are the costs associated with using NephroScan AI?
+                What are the costs associated with using Renovix AI?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
                 We offer various pricing plans to suit different needs, from individual patients to healthcare institutions. Please contact our sales team for detailed pricing information based on your specific requirements and usage volume.

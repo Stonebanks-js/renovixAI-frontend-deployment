@@ -81,7 +81,7 @@ const Hero = () => {
 
           {/* Main Heading */}
           <h1 className="heading-nephro mb-6 fade-in-up text-white" style={{ animationDelay: '0.1s' }}>
-            NephroScan AI
+            Renovix AI
             <br />
             <span className="relative text-gray-300">
               Next-Gen Kidney Intelligence

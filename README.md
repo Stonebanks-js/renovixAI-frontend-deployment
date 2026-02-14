@@ -1,6 +1,6 @@
-# 🧠 NephroScan AI
+# 🧠 Renovix AI
 
-**NephroScan AI** is an advanced AI-driven nephrology diagnostic platform designed to analyze and interpret kidney health scans with precision and explainability. It assists radiologists and healthcare professionals in early detection, pattern recognition, and decision support for renal diseases.
+**Renovix AI** is an advanced AI-driven nephrology diagnostic platform designed to analyze and interpret kidney health scans with precision and explainability. It assists radiologists and healthcare professionals in early detection, pattern recognition, and decision support for renal diseases.
 
 > 🌐 **Live Demo:** [nephroscan.lovable.app](https://nephroscan.lovable.app)
 
@@ -8,7 +8,7 @@
 
 ## 🧩 Overview
 
-NephroScan AI bridges the gap between **medical imaging** and **AI diagnostics** by combining image analysis, large language models, and clinical reasoning.  
+Renovix AI bridges the gap between **medical imaging** and **AI diagnostics** by combining image analysis, large language models, and clinical reasoning.  
 The system processes renal scan reports, identifies potential abnormalities, and generates contextual insights for medical professionals in real-time.
 
 ---
@@ -52,30 +52,11 @@ The system processes renal scan reports, identifies potential abnormalities, and
 
 ## 📦 Tech Stack
 
-- **Frontend:** Next.js, React, Tailwind CSS  
+- **Frontend:** React, TypeScript, Tailwind CSS, Vite  
 - **Backend:** Supabase, Edge Functions  
-- **AI Models:** OpenAI GPT / Vision Models for scan analysis  
+- **AI Models:** Google Gemini Pro for scan analysis  
 - **Storage & Auth:** Supabase Storage + Auth  
-- **Deployment:** Lovable (Vercel-like managed environment)
-
----
-
-## 🧭 Short-Term Goals (3–6 Months)
-
-- Improve scan parsing accuracy for diverse formats (DICOM, JPG, PDF).  
-- Integrate multimodal context retention in chat.  
-- Enhance progress feedback and real-time streaming chat.  
-- Add dashboard for clinicians to view patient scan history.
-
----
-
-## 🚀 Long-Term Goals (6–18 Months)
-
-- Deploy FDA-compliant version for clinical pilots.  
-- Integrate with EHR/EMR systems for end-to-end patient workflow.  
-- Develop explainable AI (XAI) layer for transparent decision reasoning.  
-- Create API for third-party medical software integration.  
-- Build open nephrology dataset for AI research collaboration.
+- **Deployment:** Lovable Cloud
 
 ---
 
@@ -83,58 +64,28 @@ The system processes renal scan reports, identifies potential abnormalities, and
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/NephroScanAI.git
-cd NephroScanAI
-
+git clone https://github.com/<your-username>/RenovixAI.git
+cd RenovixAI
 ```
 
-### 2️⃣ Install Dependencies
+### 2. Install Dependencies
 ```bash
 npm install
-
 ```
 
-### 3️⃣ Configure Environment Variables
-
-Create a .env.local file in the root directory:
-```bash
-NEXT_PUBLIC_SUPABASE_URL=<your_supabase_url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_anon_key>
-OPENAI_API_KEY=<your_openai_api_key>
-
-```
-
-### 4️⃣ Run Locally
+### 3. Run Locally
 ```bash
 npm run dev
-
 ```
 
 ### ⚙️ Deployment (Optional)
 
-You can deploy NephroScan AI on platforms like Lovable, Vercel, or Netlify.
-
-Steps:
-
-- Push your repository to GitHub.
-- Link it to your preferred deployment platform.
-- Set the environment variables (same as in .env.local).
-
-Deploy and access your hosted app.
-
-💡 Recommended: Lovable Cloud
- — optimized for Next.js & Edge Functions.
+You can deploy Renovix AI on platforms like Lovable, Vercel, or Netlify.
 
 ### ⚠️ Limitations
 
 - **❌ Not a replacement for certified medical diagnostics.**
-
 - **⚠️ Trained on limited, non-clinical datasets (for research/demo only).**
-
 - **📉 Accuracy depends on scan quality and data consistency.**
-
 - **🚧 Still under active development — may produce occasional misinterpretations.**
-
 - **🧾 Currently not FDA/CE certified for medical use.**
-
- 

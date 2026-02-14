@@ -136,7 +136,7 @@ const HowItWorksSection = () => {
             Ready to Experience AI-Powered Diagnostics?
           </h3>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-            Join hundreds of healthcare professionals who trust NephroScan AI for 
+            Join hundreds of healthcare professionals who trust Renovix AI for 
             accurate, fast, and reliable kidney health diagnostics.
           </p>
           

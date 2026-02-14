@@ -52,7 +52,7 @@ const Footer = () => {
           <div className="lg:col-span-2">
             <Link to="/" className="flex items-center gap-3 mb-6 group">
               <Activity className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">NephroScan AI</span>
+              <span className="text-xl font-bold">Renovix AI</span>
             </Link>
             
             <p className="text-background/70 mb-6 leading-relaxed">
@@ -149,7 +149,7 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <p className="text-background/70 text-sm">
-              © 2024 NephroScan AI. All rights reserved.
+              © 2024 Renovix AI. All rights reserved.
             </p>
 
             {/* Social Links */}
