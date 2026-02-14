@@ -1,125 +1,69 @@
 
 
-# Plan: Chatbot UX Overhaul + Hindi Translation + Voice Narration + UI Fixes
+# Plan: Voice Narration Fix + Clean Response UI + PDF Report Export
 
-## Overview
+## 1. Voice Narration Fix (High Priority)
 
-This plan addresses 5 focused areas: structured chatbot responses, Hindi translation, voice narration, Health Info modal fix, and Sign-In button visibility. Voice will use the browser's built-in SpeechSynthesis API (free, no API key needed, supports English and Hindi).
+**File:** `src/components/ScanChatInterface.tsx`
 
----
+The current `speak()` function uses `SpeechSynthesisUtterance` but likely fails silently because:
+- Volume is not explicitly set (defaults can vary)
+- Long text causes Chrome to cut off speech silently (known browser bug)
+- No "preparing" indicator is shown
 
-## 1. Structured Chatbot Response Format (Prompt Engineering)
+**Changes:**
+- Set `utterance.volume = 1.0` explicitly
+- Set `utterance.pitch = 1.0` for clarity
+- Reduce `utterance.rate` from 0.9 to 0.85 for calmer pace
+- **Split long text into chunks** (max ~200 chars at sentence boundaries) to avoid Chrome's silent-cutoff bug on long utterances. Queue chunks sequentially.
+- Add a "Preparing voice..." loading state via a new `isPreparingVoice` state
+- Add a volume slider using the existing `Slider` component (stored in state, applied to utterance)
+- Improve `getVoice()` to also match `lang` codes like `hi-IN` and prefer voices with "female" in the name more broadly
+
+## 2. Clean Response Card UI (Visual Refinement)
+
+**File:** `src/components/ScanChatInterface.tsx`
+
+The assistant message bubble currently uses `bg-muted rounded-lg p-3` which is too compact.
+
+**Changes:**
+- Increase padding on assistant messages from `p-3` to `p-5`
+- Add custom prose spacing CSS: `prose-headings:mt-4 prose-headings:mb-2 prose-li:my-1 prose-p:my-2`
+- Add subtle section dividers via `prose-hr:border-border/50 prose-hr:my-4`
+- Increase max-width from `max-w-[80%]` to `max-w-[85%]` for assistant messages
+- Add a subtle left border accent: `border-l-4 border-primary/20` on assistant messages for medical report feel
+
+## 3. PDF Report Download
+
+**File:** `src/components/ScanChatInterface.tsx`
+
+Add a "Download Report as PDF" button in the action bar below each assistant message.
+
+**Implementation approach:** Use the browser's native `window.print()` with a hidden iframe containing styled HTML, or generate a PDF purely client-side using basic DOM-to-print. Since we want to avoid adding heavy PDF libraries, we will:
+
+- Create a helper function `downloadReportPDF(content: string)` that:
+  1. Creates a hidden iframe
+  2. Writes styled HTML into it (with Renovix AI header, formatted content sections, disclaimer)
+  3. Calls `iframe.contentWindow.print()` which opens the browser's print dialog (user can "Save as PDF")
+  4. Removes the iframe after printing
+- Add a `FileDown` (or `Download`) icon button in the action row
+- The PDF will include: "Renovix AI Health Report" header, date, formatted content, and disclaimer footer
+
+**File name note:** Since this uses print-to-PDF, the browser controls the filename. We will set the document title to "Renovix_AI_Health_Report" so it defaults correctly.
+
+## 4. Updated System Prompt for Better Spacing
 
 **File:** `supabase/functions/scan-chat-stream/index.ts`
 
-Update the system prompt to enforce a structured output format for every response:
+Add to the formatting rules:
+- "Add a horizontal rule (---) between each major section"
+- "Add an empty line before and after each section heading"
+- This ensures the markdown has natural spacing that the prose CSS can render cleanly
 
-```
-RESPONSE FORMAT (MANDATORY):
-Always structure your responses using these sections:
-1. **Condition Summary** - 1-2 line overview
-2. **Key Findings** - Bullet points only
-3. **Risk Level** - State clearly: Low / Moderate / Severe
-4. **Recommended Actions** - Bullet points
-5. **Emergency Warning** - Only if applicable
-6. **Disclaimer** - Short, readable
+## Summary of File Changes
 
-STRICT RULES:
-- No long paragraphs. Use concise bullet points.
-- Use simple, patient-friendly language.
-- Keep medical accuracy intact.
-```
-
----
-
-## 2. "Translate to Hindi" Button on Each Response
-
-**File:** `src/components/ScanChatInterface.tsx`
-
-- Add a "Translate to Hindi" toggle button below each assistant message
-- On click, call the same `scan-chat-stream` edge function with: `"Translate the following medical text to Hindi. Preserve bullet formatting and medical accuracy:\n\n{original_text}"`
-- Store translated text per message in local state
-- Toggle between English (original) and Hindi (translated) views
-- Show a small language indicator badge on each message
-
----
-
-## 3. Voice Narration (Browser SpeechSynthesis API)
-
-**File:** `src/components/ScanChatInterface.tsx`
-
-- Add a "Play Voice" button next to each assistant message
-- Use `window.speechSynthesis` with:
-  - English voice (female) when displaying English text
-  - Hindi voice when displaying Hindi translation
-- Include Play/Pause/Stop controls
-- Auto-detect current language state per message
-- No external API or key needed -- works natively in all modern browsers
-- Select female voice from available system voices (`voice.name` containing "female" or "Google" Hindi/English voices)
-
----
-
-## 4. Health Info Modal Fix
-
-**File:** `src/components/HealthInfoModal.tsx`
-
-- Add `max-h-[90vh] overflow-y-auto` to DialogContent so the form scrolls on small screens
-- Ensure the "Submit Information" button is always visible by adding sticky positioning or reducing spacing
-- Add a "Sign in first" button that links to `/auth` when user is not authenticated (instead of just disabling the submit button)
-
----
-
-## 5. Sign-In Button Visibility
-
-**File:** `src/components/Navigation.tsx`
-
-- Change the Sign In button from `variant="hero"` to a more prominent style with explicit background color, larger padding, and a subtle glow/shadow effect
-- Add `shadow-md` and increased contrast to ensure it never blends with the background
-
----
-
-## Technical Details
-
-### Translation State Model (ScanChatInterface)
-
-```text
-Per message state:
-- translatedContent: string | null
-- isTranslating: boolean
-- showHindi: boolean
-```
-
-When "Translate to Hindi" is clicked:
-1. If `translatedContent` is null, fetch translation via edge function
-2. Toggle `showHindi` to swap displayed content
-3. Voice button reads whichever language is currently shown
-
-### Voice Narration Implementation
-
-```text
-- Uses window.speechSynthesis (Web Speech API)
-- Selects female voice from speechSynthesis.getVoices()
-- For Hindi: filters voices with lang="hi-IN"
-- For English: filters voices with lang="en-US" or "en-IN"
-- Provides Play/Pause toggle button per message
-- Stops any currently playing speech before starting new one
-```
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/scan-chat-stream/index.ts` | Update system prompt for structured format |
-| `src/components/ScanChatInterface.tsx` | Add translate button, voice button, per-message state |
-| `src/components/HealthInfoModal.tsx` | Fix scroll overflow, add sign-in redirect button |
-| `src/components/Navigation.tsx` | Improve Sign In button visibility |
-
-### What This Does NOT Include
-
-- External TTS API integration (uses free browser API instead)
-- Health Timeline Dashboard (separate feature, large scope)
-- Clinician/Doctor Mode panel (separate feature)
-- Personalized Health Advice Engine (separate feature)
-
-These advanced features are best implemented as separate follow-up tasks.
+| File | Changes |
+|------|---------|
+| `src/components/ScanChatInterface.tsx` | Fix voice (volume, chunking, slider), improve message card styling, add PDF download button |
+| `supabase/functions/scan-chat-stream/index.ts` | Add spacing rules to system prompt (horizontal rules between sections) |
 
