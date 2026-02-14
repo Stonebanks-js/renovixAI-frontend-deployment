@@ -165,10 +165,10 @@ const downloadReportPDF = (content: string) => {
       </div>
       <div class="content">${htmlContent}</div>
       <div class="disclaimer">
-        <strong>Disclaimer:</strong> This report is AI-generated for informational purposes only. It does not constitute medical advice. All findings and suggestions should be reviewed and validated by a licensed healthcare professional. Do not self-medicate based on this report.
+        <strong>Disclaimer:</strong> This AI-generated report is for informational support only. For safe and personalized medical decisions, we gently recommend consulting a qualified healthcare professional before starting any medication.
       </div>
       <div class="footer">
-        <span>Powered by Renovix AI</span>
+        <span>Renovix AI &mdash; Medical Analysis Report</span>
         <span>Confidential — For Patient Use Only</span>
       </div>
     </div>
@@ -318,7 +318,7 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
       console.warn('[Voice] No matching voice found for', lang);
     }
     utterance.volume = Math.max(0.1, vol / 100);
-    utterance.rate = 0.75;
+    utterance.rate = 0.95;
     utterance.pitch = 1.0;
     utterance.onend = () => {
       console.log(`[Voice] Chunk ${chunkIndexRef.current + 1} finished`);

@@ -5,20 +5,42 @@ import AboutSection from '@/components/AboutSection';
 import HowItWorksSection from '@/components/HowItWorksSection';
 import Footer from '@/components/Footer';
 import HealthInfoModal from '@/components/HealthInfoModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [showHealthModal, setShowHealthModal] = useState(false);
 
   useEffect(() => {
-    // Check if user has already provided health info
-    const healthInfo = localStorage.getItem('healthInfo');
-    if (!healthInfo) {
-      // Delay showing modal to let page load
-      const timer = setTimeout(() => {
-        setShowHealthModal(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
+    // Only show health info popup AFTER user is signed in
+    const checkAuthAndProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return; // Not signed in — don't show popup
+
+      // Check if profile already has real data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, date_of_birth')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      // If profile is auto-generated (default values), prompt for real info
+      const needsInfo = !profile || profile.full_name === 'User';
+      if (needsInfo) {
+        const timer = setTimeout(() => setShowHealthModal(true), 800);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    checkAuthAndProfile();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Re-check after sign-in
+        setTimeout(() => checkAuthAndProfile(), 500);
+      }
+    });
+
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
   return (
