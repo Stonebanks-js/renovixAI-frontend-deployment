@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Loader2, Send, MessageCircle, Bot, User, Pill, Leaf, Languages, Volume2, VolumeX, Pause, Play, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
@@ -230,6 +231,15 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     setMessageMeta(prev => ({ ...prev, [id]: { ...getMeta(id), ...update } }));
   };
 
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    };
+  };
+
   // Translation
   const translateToHindi = useCallback(async (msg: Message) => {
     const meta = getMeta(msg.id);
@@ -239,9 +249,10 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     }
     setMeta(msg.id, { isTranslating: true });
     try {
+      const headers = await getAuthHeaders();
       const resp = await fetch(CHAT_STREAM_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           sessionId,
           message: `Translate the following medical text to Hindi. Preserve all bullet formatting, markdown, and medical accuracy. Only return the translation, nothing else:\n\n${msg.content}`,
@@ -426,9 +437,10 @@ export const ScanChatInterface = ({ sessionId, pdfText, diagnosis }: ScanChatInt
     };
 
     try {
+      const headers = await getAuthHeaders();
       const resp = await fetch(CHAT_STREAM_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           sessionId,
           message: text,
