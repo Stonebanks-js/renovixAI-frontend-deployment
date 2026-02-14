@@ -1,20 +1,25 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileImage, Brain, CheckCircle, Loader2, Sparkles, Shield } from 'lucide-react';
+import { Upload, FileImage, Brain, CheckCircle, Loader2, Sparkles, Shield, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useScanAnalysis } from '@/hooks/useScanAnalysis';
 import ScanReport from '@/components/ScanReport';
 import { ScanChatInterface } from '@/components/ScanChatInterface';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 const AIScan = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   
   const {
     isAnalyzing,
@@ -25,16 +30,28 @@ const AIScan = () => {
     resetAnalysis,
     lastExtractedPdfText,
   } = useScanAnalysis();
-  
+
+  // Check auth state
+  useEffect(() => {
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      setAuthChecked(true);
+    };
+    check();
+    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user || null);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         setSelectedFile(file);
-        
         if (file.type === 'application/pdf') {
-          setPreviewUrl(''); // No preview for PDF
+          setPreviewUrl('');
         } else {
           const url = URL.createObjectURL(file);
           setPreviewUrl(url);
@@ -69,6 +86,33 @@ const AIScan = () => {
     fileInputRef.current?.click();
   };
 
+  // Gate: require sign-in
+  if (authChecked && !user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <section className="pt-32 pb-24">
+          <div className="container-medical">
+            <Card className="max-w-lg mx-auto p-10 text-center space-y-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <LogIn className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">Sign In Required</h2>
+              <p className="text-muted-foreground">
+                Please sign in to access the AI Scan feature. Your health data and reports will be securely stored.
+              </p>
+              <Button size="lg" className="w-full" onClick={() => navigate('/auth')}>
+                <LogIn className="w-5 h-5 mr-2" />
+                Sign In to Continue
+              </Button>
+            </Card>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -89,8 +133,8 @@ const AIScan = () => {
               </span>
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-              Upload your CT scans, MRI images, or pathology reports and receive personalized AI-powered health insights powered by Google Gemini. 
-              Get detailed analysis and recommendations in seconds.
+               Upload your CT scans, MRI images, or pathology reports and receive personalized AI-powered health insights. 
+               Get detailed analysis and recommendations in seconds.
             </p>
           </div>
         </div>
@@ -192,7 +236,7 @@ const AIScan = () => {
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        Powered by Google Gemini AI for personalized analysis
+                        Advanced AI-powered personalized analysis
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
@@ -208,7 +252,7 @@ const AIScan = () => {
                         <div>
                           <h4 className="font-medium text-foreground mb-1">AI-Powered Analysis</h4>
                           <p className="text-sm text-muted-foreground">
-                            Uses Google Gemini 2.5 Pro for advanced medical image understanding and personalized health insights.
+                             Advanced AI medical image understanding and personalized health insights.
                           </p>
                         </div>
                       </div>
@@ -244,10 +288,10 @@ const AIScan = () => {
                   <div className="max-w-md mx-auto space-y-2">
                     <Progress value={analysisProgress} className="h-2" />
                     <p className="text-sm text-muted-foreground">
-                      {analysisProgress < 30 && "📤 Uploading scan to secure server..."}
-                      {analysisProgress >= 30 && analysisProgress < 60 && "🔍 Analyzing with Gemini AI..."}
-                      {analysisProgress >= 60 && analysisProgress < 90 && "🧠 Generating personalized insights..."}
-                      {analysisProgress >= 90 && "✨ Finalizing your medical report..."}
+                      {analysisProgress < 30 && "Uploading scan to secure server..."}
+                      {analysisProgress >= 30 && analysisProgress < 60 && "Analyzing your scan..."}
+                      {analysisProgress >= 60 && analysisProgress < 90 && "Generating personalized insights..."}
+                      {analysisProgress >= 90 && "Finalizing your medical report..."}
                     </p>
                   </div>
                 </div>
