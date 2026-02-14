@@ -3,7 +3,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, MessageCircle, Bot, User } from 'lucide-react';
+import { Loader2, Send, MessageCircle, Bot, User, Pill, Leaf } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -218,6 +219,22 @@ const sendMessage = async (override?: string) => {
                 >
                   Explain the findings in simple terms
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue("Suggest emergency medicines for my condition")}
+                  className="border-destructive/30 text-destructive hover:bg-destructive/5"
+                >
+                  <Pill className="w-4 h-4 mr-1" /> Suggest emergency medicines
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue("Recommend home remedies for my findings")}
+                  className="border-accent/50 text-accent-foreground hover:bg-accent/10"
+                >
+                  <Leaf className="w-4 h-4 mr-1" /> Recommend home remedies
+                </Button>
               </div>
             </div>
           ) : (
@@ -241,7 +258,13 @@ const sendMessage = async (override?: string) => {
                         : 'bg-muted text-foreground'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    )}
                     <p className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString()}
                     </p>
