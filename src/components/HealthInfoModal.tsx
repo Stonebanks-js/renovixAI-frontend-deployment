@@ -122,7 +122,7 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -243,16 +243,29 @@ const HealthInfoModal = ({ isOpen, onClose }: HealthInfoModalProps) => {
             </p>
           </div>
 
-          {/* Submit Button */}
-          <Button 
-            type="submit" 
-            variant="hero" 
-            size="lg" 
-            className="w-full"
-            disabled={loading || !user}
-          >
-            {loading ? 'Saving...' : 'Submit Information'}
-          </Button>
+          {/* Submit / Sign In Button */}
+          {user ? (
+            <Button 
+              type="submit" 
+              variant="hero" 
+              size="lg" 
+              className="w-full sticky bottom-0"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Submit Information'}
+            </Button>
+          ) : (
+            <Button 
+              type="button"
+              variant="hero" 
+              size="lg" 
+              className="w-full sticky bottom-0"
+              onClick={handleLoginRedirect}
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Sign in first to save
+            </Button>
+          )}
         </form>
       </DialogContent>
     </Dialog>

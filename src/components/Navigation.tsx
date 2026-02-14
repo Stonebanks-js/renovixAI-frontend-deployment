@@ -42,7 +42,7 @@ const Navigation = () => {
                 <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
               </Link>
             ))}
-            <Button variant="hero" size="default" asChild>
+            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md px-6 py-2 font-semibold text-sm rounded-lg">
               <Link to="/auth">Sign In</Link>
             </Button>
           </div>
@@ -77,7 +77,7 @@ const Navigation = () => {
                   {item.name}
                 </Link>
               ))}
-              <Button variant="hero" size="default" className="w-full mt-4" asChild>
+              <Button asChild className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md font-semibold rounded-lg">
                 <Link to="/auth">Sign In</Link>
               </Button>
             </div>
